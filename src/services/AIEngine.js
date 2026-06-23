@@ -544,7 +544,6 @@ export const generateDigitalTwinTrajectory = async (patientData) => {
     `;
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": "Bearer " + apiKey,
@@ -603,7 +602,6 @@ export const analyzeGenomicSequence = async (dnaSequence) => {
     `;
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": "Bearer " + apiKey,
@@ -656,7 +654,6 @@ export const analyzeArtTherapyEmotion = async (userEmotion) => {
       }
     `;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
