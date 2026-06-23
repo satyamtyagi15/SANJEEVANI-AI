@@ -44,7 +44,7 @@ export const generateFollowUpQuestion = async (chatHistory, language, pastMedica
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: "openrouter/free",
         messages: [
           { role: "system", content: "You are a medical JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -139,7 +139,7 @@ export const processTriage = async (chatHistory, language = 'en', pastMedicalHis
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: "openrouter/free",
         messages: [
           { role: "system", content: "You are a medical JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -219,7 +219,7 @@ export const runSafetyReviewAgent = async (triageData) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: "openrouter/free",
         messages: [
           { role: "system", content: "You are a medical safety JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -263,7 +263,7 @@ export const runBillingAgent = async (triageData) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: "openrouter/free",
         messages: [
           { role: "system", content: "You are a Medical Billing JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -309,7 +309,7 @@ export const runPharmacovigilanceAgent = async (triageData, pastMedicalHistory) 
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: "openrouter/free",
         messages: [
           { role: "system", content: "You are a Pharmacovigilance JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -355,7 +355,7 @@ export const generateSOAPNote = async (transcript) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: "openrouter/free",
         messages: [
           { role: "system", content: "You are a Medical SOAP Note AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -410,7 +410,7 @@ export const checkDrugInteractions = async (drugs, genes) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: "openrouter/free",
         messages: [
           { role: "system", content: "You are a Pharmacogenomics AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
