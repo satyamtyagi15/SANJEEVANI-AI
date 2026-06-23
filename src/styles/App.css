@@ -146,7 +146,7 @@ body {
 }
 
 .module-container {
-  padding: 3rem;
+  padding: 1.5rem 2rem;
   min-height: 100vh;
   color: #fff;
 }
@@ -175,7 +175,7 @@ body {
   border-right: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
-  padding: 2.5rem;
+  padding: 1.5rem;
   background: linear-gradient(90deg, rgba(0, 240, 255, 0.02), transparent);
   
   /* UX FIX: Sticky Kiosk so it doesn't stretch and the mic is always accessible */
@@ -189,44 +189,44 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 2.5rem;
+  padding: 1.5rem;
   background: rgba(4, 7, 17, 0.8);
   box-shadow: inset 20px 0 50px rgba(0,0,0,0.5);
   min-height: 100vh;
 }
 
 .section-header {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   position: relative;
 }
 
 .section-header::after {
   content: '';
   position: absolute;
-  bottom: -10px;
+  bottom: -6px;
   left: 0;
-  width: 40px;
+  width: 30px;
   height: 2px;
   background: var(--primary);
   box-shadow: 0 0 10px var(--primary);
 }
 
 .section-header h2 {
-  font-size: 2rem;
+  font-size: 1.4rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   color: #fff;
-  text-shadow: 0 0 20px rgba(255,255,255,0.2);
+  text-shadow: 0 0 15px rgba(255,255,255,0.2);
 }
 
 .section-header p {
   color: var(--primary);
-  font-size: 0.95rem;
-  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  margin-top: 0.3rem;
   font-family: 'JetBrains Mono', monospace;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 }
 
 /* Glass Panel */
@@ -236,9 +236,9 @@ body {
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);
   border-top: 1px solid rgba(255,255,255,0.1);
-  border-radius: 16px;
-  padding: 1.5rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 /* Kiosk Specific */
@@ -248,12 +248,12 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2.5rem;
+  gap: 1.5rem;
 }
 
 .mic-button {
-  width: 140px;
-  height: 140px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   border: 2px solid rgba(0, 240, 255, 0.3);
   background: rgba(10, 15, 29, 0.8);
@@ -264,8 +264,8 @@ body {
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   box-shadow: 
-    0 0 20px rgba(0, 240, 255, 0.1),
-    inset 0 0 20px rgba(0, 240, 255, 0.1);
+    0 0 15px rgba(0, 240, 255, 0.1),
+    inset 0 0 15px rgba(0, 240, 255, 0.1);
   position: relative;
   z-index: 10;
   backdrop-filter: blur(10px);
@@ -274,7 +274,7 @@ body {
 .mic-button::before {
   content: '';
   position: absolute;
-  inset: -5px;
+  inset: -4px;
   border-radius: 50%;
   background: conic-gradient(from 0deg, transparent, var(--primary), transparent 30%);
   z-index: -1;
@@ -289,8 +289,8 @@ body {
 .mic-button:hover {
   transform: scale(1.05);
   box-shadow: 
-    0 0 40px rgba(0, 240, 255, 0.3),
-    inset 0 0 30px rgba(0, 240, 255, 0.2);
+    0 0 30px rgba(0, 240, 255, 0.3),
+    inset 0 0 20px rgba(0, 240, 255, 0.2);
   color: #fff;
   border-color: var(--primary);
 }

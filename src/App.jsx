@@ -52,7 +52,7 @@ function App() {
             <ScanEye size={20} /> <span>Vision AI</span>
           </li>
           <li className={activeModule === 'multi-agent' ? 'active' : ''} onClick={() => setActiveModule('multi-agent')}>
-            <Users size={20} /> <span>Multi-Agent AI</span>
+            <Users size={20} /> <span>AI Doctor Evaluation</span>
           </li>
           <li className={activeModule === 'digital-twin' ? 'active' : ''} onClick={() => setActiveModule('digital-twin')}>
             <Activity size={20} /> <span>AI Digital Twin</span>
