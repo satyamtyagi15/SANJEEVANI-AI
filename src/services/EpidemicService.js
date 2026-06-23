@@ -1,0 +1,41 @@
+// Simple in-memory tracker for the Hackathon Demo
+class EpidemicTracker {
+  constructor() {
+    this.cases = [];
+  }
+
+  addCase(patientData) {
+    const { id, epidemicCategory, suspectedCondition } = patientData;
+    const location = patientData.location?.toLowerCase().trim() || 'unknown';
+    const category = epidemicCategory || suspectedCondition || 'Unknown Disease';
+
+    // Prevent duplicate cases from being added (React StrictMode fix)
+    if (id && this.cases.some(c => c.id === id)) {
+      return null;
+    }
+
+    this.cases.push({
+      id,
+      location,
+      category,
+      timestamp: new Date()
+    });
+
+    const casesInLocation = this.cases.filter(
+      (c) => c.location === location && c.category === category
+    );
+
+    if (casesInLocation.length >= 2) {
+      return {
+        isOutbreak: true,
+        location: location.toUpperCase(),
+        category: category.toUpperCase(),
+        caseCount: casesInLocation.length
+      };
+    }
+    
+    return null;
+  }
+}
+
+export const epidemicService = new EpidemicTracker();

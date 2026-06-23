@@ -1,0 +1,201 @@
+import React, { useState, useRef } from 'react';
+import { runMultiAgentDebate } from '../services/AIEngine';
+import { Users, HeartPulse, Brain, Pill, PlayCircle, Loader2, CheckCircle, Activity, Wind, Stethoscope, Droplet, Smile, Sun, Crosshair, Skull, FileBarChart, Dna, Eye } from 'lucide-react';
+
+const MultiAgent = () => {
+  const [caseDescription, setCaseDescription] = useState('');
+  const [isDebating, setIsDebating] = useState(false);
+  const [debateLog, setDebateLog] = useState([]);
+  const [consensus, setConsensus] = useState(null);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const chatEndRef = useRef(null);
+
+  const startDebate = async () => {
+    if (!caseDescription.trim()) return;
+    setIsDebating(true);
+    setDebateLog([]);
+    setConsensus(null);
+    setErrorMsg('');
+
+    try {
+      const result = await runMultiAgentDebate(caseDescription);
+      
+      let currentLog = [];
+      for (let i = 0; i < result.debate.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 1500)); 
+        currentLog = [...currentLog, result.debate[i]];
+        setDebateLog(currentLog);
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setConsensus(result.consensus);
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to run the Multi-Agent debate.');
+    } finally {
+      setIsDebating(false);
+    }
+  };
+
+  const getAgentIcon = (specialty) => {
+    const s = specialty.toLowerCase();
+    if (s.includes('cardio')) return <HeartPulse size={24} color="#ff4d4d" />;
+    if (s.includes('neuro')) return <Brain size={24} color="#a855f7" />;
+    if (s.includes('pharma') || s.includes('tox')) return <Pill size={24} color="#3b82f6" />;
+    if (s.includes('pulm') || s.includes('lung')) return <Wind size={24} color="#38bdf8" />;
+    if (s.includes('gastro')) return <Stethoscope size={24} color="#f59e0b" />;
+    if (s.includes('hemato') || s.includes('blood')) return <Droplet size={24} color="#ef4444" />;
+    if (s.includes('psych') || s.includes('mind')) return <Smile size={24} color="#ec4899" />;
+    if (s.includes('derma') || s.includes('skin')) return <Sun size={24} color="#facc15" />;
+    if (s.includes('trauma') || s.includes('surg')) return <Crosshair size={24} color="#dc2626" />;
+    if (s.includes('endo')) return <Activity size={24} color="#10b981" />;
+    if (s.includes('onco')) return <Dna size={24} color="#8b5cf6" />;
+    if (s.includes('patho')) return <FileBarChart size={24} color="#64748b" />;
+    return <Users size={24} color="#00f0ff" />;
+  };
+
+  const getAgentColor = (specialty) => {
+    const s = specialty.toLowerCase();
+    if (s.includes('cardio')) return 'rgba(255, 77, 77, 0.1)';
+    if (s.includes('neuro')) return 'rgba(168, 85, 247, 0.1)';
+    if (s.includes('pharma') || s.includes('tox')) return 'rgba(59, 130, 246, 0.1)';
+    if (s.includes('pulm')) return 'rgba(56, 189, 248, 0.1)';
+    if (s.includes('gastro')) return 'rgba(245, 158, 11, 0.1)';
+    if (s.includes('hemato')) return 'rgba(239, 68, 68, 0.1)';
+    if (s.includes('psych')) return 'rgba(236, 72, 153, 0.1)';
+    if (s.includes('derma')) return 'rgba(250, 204, 21, 0.1)';
+    if (s.includes('trauma')) return 'rgba(220, 38, 38, 0.1)';
+    if (s.includes('endo')) return 'rgba(16, 185, 129, 0.1)';
+    if (s.includes('onco')) return 'rgba(139, 92, 246, 0.1)';
+    if (s.includes('patho')) return 'rgba(100, 116, 139, 0.1)';
+    return 'rgba(0, 240, 255, 0.05)';
+  };
+
+  const getAgentBorder = (specialty) => {
+    const s = specialty.toLowerCase();
+    if (s.includes('cardio')) return '#ff4d4d';
+    if (s.includes('neuro')) return '#a855f7';
+    if (s.includes('pharma') || s.includes('tox')) return '#3b82f6';
+    if (s.includes('pulm')) return '#38bdf8';
+    if (s.includes('gastro')) return '#f59e0b';
+    if (s.includes('hemato')) return '#ef4444';
+    if (s.includes('psych')) return '#ec4899';
+    if (s.includes('derma')) return '#facc15';
+    if (s.includes('trauma')) return '#dc2626';
+    if (s.includes('endo')) return '#10b981';
+    if (s.includes('onco')) return '#8b5cf6';
+    if (s.includes('patho')) return '#64748b';
+    return '#00f0ff';
+  };
+
+  return (
+    <div className="module-container" style={{ display: 'flex', gap: '2rem', height: '85vh' }}>
+      
+      {/* Left Column: Input */}
+      <div className="glass-panel" style={{ flex: '0 0 35%', display: 'flex', flexDirection: 'column' }}>
+        <div className="section-header">
+          <h2>Agentic Committee</h2>
+          <p>Multi-Specialist AI Debate</p>
+        </div>
+
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--glass-border)', flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <h3 style={{ color: 'var(--primary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+              <Users size={20} /> Active AI Board (13 Specialists)
+            </h3>
+            <ul className="custom-scrollbar" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', overflowY: 'auto', flex: 1, paddingRight: '10px' }}>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><HeartPulse size={16} color="#ff4d4d"/> Cardio</li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Brain size={16} color="#a855f7"/> Neuro</li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Pill size={16} color="#3b82f6"/> Pharma</li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Wind size={16} color="#38bdf8"/> Pulmono</li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Stethoscope size={16} color="#f59e0b"/> Gastro</li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Droplet size={16} color="#ef4444"/> Hemato</li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Smile size={16} color="#ec4899"/> Psych</li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Sun size={16} color="#facc15"/> Derma</li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Crosshair size={16} color="#dc2626"/> Trauma</li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Skull size={16} color="#10b981"/> Toxico</li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Activity size={16} color="#10b981"/> Endo</li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Dna size={16} color="#8b5cf6"/> Onco</li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><FileBarChart size={16} color="#64748b"/> Patho</li>
+            </ul>
+          </div>
+
+          <textarea
+            value={caseDescription}
+            onChange={(e) => setCaseDescription(e.target.value)}
+            placeholder="Describe the complex patient case here... (e.g., Patient is a 55yr old male with sudden numbness in left arm, history of hypertension, currently taking Lisinopril but complains of chest tightness today.)"
+            style={{ flex: 1, width: '100%', padding: '1rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--glass-border)', color: '#fff', fontSize: '1rem', resize: 'none', fontFamily: 'inherit' }}
+          />
+
+          <button 
+            onClick={startDebate} 
+            disabled={isDebating || !caseDescription.trim()}
+            style={{ padding: '1.2rem', borderRadius: '8px', border: 'none', background: 'linear-gradient(90deg, var(--primary), var(--accent))', color: '#fff', fontWeight: 'bold', fontSize: '1.1rem', cursor: (isDebating || !caseDescription.trim()) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+          >
+            {isDebating ? <><Loader2 className="spin" size={20} /> DEBATING...</> : <><PlayCircle size={20} /> START AI DEBATE</>}
+          </button>
+
+          {errorMsg && <p style={{ color: 'var(--status-red)', textAlign: 'center' }}>{errorMsg}</p>}
+        </div>
+      </div>
+
+      {/* Right Column: Debate Log */}
+      <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0' }}>
+        <div className="section-header" style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', margin: 0, background: 'rgba(0,0,0,0.2)' }}>
+          <h2 style={{ fontSize: '1.2rem' }}>Live Debate Transcript</h2>
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: '#0a0a0a' }}>
+          
+          {debateLog.length === 0 && !isDebating && !consensus && (
+            <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <Users size={64} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+              <p>Submit a case to start the multi-agent debate.</p>
+            </div>
+          )}
+
+          {debateLog.map((log, index) => (
+            <div key={index} style={{ display: 'flex', gap: '1rem', animation: 'fadeIn 0.5s ease-out' }}>
+              <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: getAgentColor(log.specialty), display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${getAgentBorder(log.specialty)}`, flexShrink: 0 }}>
+                {getAgentIcon(log.specialty)}
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem 1.5rem', borderRadius: '0 12px 12px 12px', border: '1px solid rgba(255,255,255,0.05)', flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <strong style={{ color: getAgentBorder(log.specialty) }}>{log.agent}</strong>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase' }}>{log.specialty}</span>
+                </div>
+                <p style={{ margin: 0, color: '#e2e8f0', lineHeight: '1.6' }}>{log.message}</p>
+              </div>
+            </div>
+          ))}
+
+          {isDebating && (
+             <div style={{ display: 'flex', gap: '1rem', animation: 'pulse 1.5s infinite' }}>
+               <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                 <Loader2 className="spin" size={20} color="var(--primary)" />
+               </div>
+               <div style={{ padding: '1rem', color: 'var(--text-muted)' }}>Agents are processing...</div>
+             </div>
+          )}
+
+          {consensus && (
+            <div style={{ background: 'linear-gradient(145deg, rgba(0, 240, 255, 0.1), rgba(0, 0, 0, 0.4))', border: '1px solid var(--primary)', padding: '2rem', borderRadius: '12px', marginTop: '1rem', animation: 'fadeIn 1s ease-out' }}>
+              <h3 style={{ color: 'var(--primary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <CheckCircle size={24} /> Final Unified Consensus
+              </h3>
+              <p style={{ color: '#fff', lineHeight: '1.7', fontSize: '1.1rem' }}>{consensus}</p>
+            </div>
+          )}
+
+          <div ref={chatEndRef} />
+        </div>
+      </div>
+      
+    </div>
+  );
+};
+
+export default MultiAgent;
