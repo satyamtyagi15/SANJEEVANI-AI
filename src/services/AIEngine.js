@@ -56,7 +56,7 @@ export const generateFollowUpQuestion = async (chatHistory, language, pastMedica
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3-8b-instruct:free",
+        model: "openrouter/free",
         messages: [
           { role: "system", content: "You are a medical JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -151,7 +151,7 @@ export const processTriage = async (chatHistory, language = 'en', pastMedicalHis
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3-8b-instruct:free",
+        model: "openrouter/free",
         messages: [
           { role: "system", content: "You are a medical JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -231,7 +231,7 @@ export const runSafetyReviewAgent = async (triageData) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3-8b-instruct:free",
+        model: "openrouter/free",
         messages: [
           { role: "system", content: "You are a medical safety JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -275,7 +275,7 @@ export const runBillingAgent = async (triageData) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3-8b-instruct:free",
+        model: "openrouter/free",
         messages: [
           { role: "system", content: "You are a Medical Billing JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -321,7 +321,7 @@ export const runPharmacovigilanceAgent = async (triageData, pastMedicalHistory) 
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3-8b-instruct:free",
+        model: "openrouter/free",
         messages: [
           { role: "system", content: "You are a Pharmacovigilance JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -367,7 +367,7 @@ export const generateSOAPNote = async (transcript) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3-8b-instruct:free",
+        model: "openrouter/free",
         messages: [
           { role: "system", content: "You are a Medical SOAP Note AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -422,7 +422,7 @@ export const checkDrugInteractions = async (drugs, genes) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3-8b-instruct:free",
+        model: "openrouter/free",
         messages: [
           { role: "system", content: "You are a Pharmacogenomics AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -494,7 +494,7 @@ export const runMultiAgentDebate = async (patientCase) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3-8b-instruct:free", // 100% FREE auto-router, prevents 429 Too Many Requests errors
+        model: "openrouter/free", // 100% FREE auto-router, prevents 429 Too Many Requests errors
         max_tokens: 2500,
         messages: [
           { role: "system", content: "You are a medical JSON AI. Output only valid raw JSON without any markdown code blocks or conversational text." },
@@ -565,7 +565,7 @@ export const generateDigitalTwinTrajectory = async (patientData) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3-8b-instruct:free", // 100% FREE auto-router model
+        model: "openrouter/free", // 100% FREE auto-router model
         messages: [
           { role: "system", content: "You are a Digital Twin JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -623,7 +623,7 @@ export const analyzeGenomicSequence = async (dnaSequence) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3-8b-instruct:free", // 100% FREE auto-router model
+        model: "openrouter/free", // 100% FREE auto-router model
         messages: [
           { role: "system", content: "You are a Genomics JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -676,7 +676,7 @@ export const analyzeArtTherapyEmotion = async (userEmotion) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3-8b-instruct:free", 
+        model: "openrouter/free", 
         messages: [
           { role: "system", content: "You are an Art Therapy JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
