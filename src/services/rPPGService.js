@@ -176,26 +176,40 @@ export const startScanning = (videoRef, canvasRef, onSignalUpdate, onBpmUpdate, 
 
         // 3. Time-Domain Peak Detection (Finding the heartbeat pulses)
         let peaks = [];
+        // Calculate dynamic threshold based on signal variance
+        let minVal = Math.min(...smoothed);
+        let maxVal = Math.max(...smoothed);
+        let dynamicThreshold = minVal + (maxVal - minVal) * 0.5; // Only count peaks in the upper 50% of the wave
+
         for (let i = 1; i < smoothed.length - 1; i++) {
-          // A peak is higher than its neighbors and above a slight threshold to ignore micro-noise
-          if (smoothed[i] > smoothed[i - 1] && smoothed[i] > smoothed[i + 1] && smoothed[i] > 0.3) { 
-            peaks.push(timeBuffer[i]);
+          if (smoothed[i] > smoothed[i - 1] && smoothed[i] > smoothed[i + 1] && smoothed[i] > dynamicThreshold) { 
+            // Enforce minimum distance between peaks (e.g., 333ms = max 180 BPM)
+            if (peaks.length === 0 || (timeBuffer[i] - peaks[peaks.length - 1] > 333)) {
+              peaks.push(timeBuffer[i]);
+            }
           }
         }
 
         // 4. Calculate BPM based on interval between true peaks
         if (peaks.length >= 3) {
-          let totalInterval = 0;
+          let validIntervals = [];
           for (let i = 1; i < peaks.length; i++) {
-            totalInterval += (peaks[i] - peaks[i - 1]);
+            let interval = peaks[i] - peaks[i - 1];
+            // Only accept intervals that correspond to 45 - 120 BPM realistically for resting state
+            if (interval > 500 && interval < 1333) {
+              validIntervals.push(interval);
+            }
           }
-          const avgInterval = totalInterval / (peaks.length - 1);
-          const calculatedBpm = 60000 / avgInterval; // Convert ms to BPM
 
-          // 5. Sanity bounds (Human heart rate generally between 45 and 180)
-          if (calculatedBpm > 45 && calculatedBpm < 180) {
-             // Exponential moving average to smooth the final BPM display
-             baseBpm = (baseBpm * 0.9) + (calculatedBpm * 0.1); 
+          if (validIntervals.length > 0) {
+            const avgInterval = validIntervals.reduce((a, b) => a + b, 0) / validIntervals.length;
+            const calculatedBpm = 60000 / avgInterval;
+
+            // 5. Sanity bounds and smoothing
+            if (calculatedBpm > 50 && calculatedBpm < 120) {
+               // Exponential moving average to smooth the final BPM display
+               baseBpm = (baseBpm * 0.9) + (calculatedBpm * 0.1); 
+            }
           }
         }
         
