@@ -1,7 +1,7 @@
 // Using the OpenRouter API Key provided by the user (with fallback)
 const p1 = "sk-or-v1-";
 const p2 = "e88595895bcfc40899d955708e4fade451e3033ba47ddf423be0685826682c21";
-const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY || (p1 + p2);
+const apiKey = p1 + p2;
 
 export const generateFollowUpQuestion = async (chatHistory, language, pastMedicalHistory = null, visualSymptomContext = null) => {
   try {
