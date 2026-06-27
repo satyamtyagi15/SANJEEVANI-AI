@@ -346,7 +346,7 @@ const PatientKiosk = ({ onTriageComplete }) => {
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
           disabled={step === 'vitals'}
-          style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid var(--glass-border)' }}
+          style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', backgroundColor: '#0b0f19', color: '#fff', border: '1px solid var(--glass-border)' }}
         >
           <optgroup label="Indian Regional">
             <option value="hi-IN">हिन्दी (Hindi)</option>
