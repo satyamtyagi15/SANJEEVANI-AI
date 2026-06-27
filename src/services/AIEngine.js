@@ -1,6 +1,8 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
 // Using the OpenRouter API Key provided by the user (with fallback)
 const p1 = "sk-or-v1-";
 const p2 = "d8eb6715ba38c4a711290758c82e8cbfde6a8533d068cd39ec1d9458fd1bc4ce";
+const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
 const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY || (p1 + p2);
 
 
@@ -35,9 +37,8 @@ export const generateFollowUpQuestion = async (chatHistory, language, pastMedica
       ${contextStr}
       
       Task: Based on the patient's exact symptoms and any visual context provided, ask ONE highly relevant, diagnostic follow-up question to narrow down the exact cause.
-      DO NOT jump to unrelated life-threatening conditions unless the symptoms actually point to them (e.g., chest pain, shortness of breath, severe trauma).
-      For example, if the patient says they have an itchy red rash, ask about new foods, allergies, recent insect bites, or fever. DO NOT ask about chest pain or numbness unless they complain of arm pain/tightness.
-      Be a smart, logical doctor. Ask only ONE question at a time.
+      DO NOT jump to unrelated life-threatening conditions unless the symptoms actually point to them.
+      Ask only ONE question at a time.
       
       If you feel you have gathered enough diagnostic information (typically after 2-3 questions) OR if the patient mentions a critical emergency, indicate that triage is ready.
       
@@ -48,6 +49,18 @@ export const generateFollowUpQuestion = async (chatHistory, language, pastMedica
       }
     `;
 
+    if (geminiApiKey) {
+      const genAI = new GoogleGenerativeAI(geminiApiKey);
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-1.5-flash",
+        generationConfig: { responseMimeType: "application/json" }
+      });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return parseJSONOutput(response.text());
+    }
+
+    // Fallback to openrouter if gemini key is missing
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -70,8 +83,9 @@ export const generateFollowUpQuestion = async (chatHistory, language, pastMedica
 
   } catch (error) {
     console.error("Follow-up error:", error);
-    // Fallback: forcefully proceed to triage if API fails
     return { question: "", readyForTriage: true };
+  }
+};
   }
 };
 
