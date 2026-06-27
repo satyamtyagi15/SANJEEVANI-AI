@@ -36,15 +36,14 @@ export const generateFollowUpQuestion = async (chatHistory, language, pastMedica
       }
     `;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const response = await fetch("https://text.pollinations.ai/", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: "openai",
+        jsonMode: true,
         messages: [
           { role: "system", content: "You are a medical JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -131,15 +130,14 @@ export const processTriage = async (chatHistory, language = 'en', pastMedicalHis
       }
     `;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const response = await fetch("https://text.pollinations.ai/", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: "openai",
+        jsonMode: true,
         messages: [
           { role: "system", content: "You are a medical JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -211,15 +209,14 @@ export const runSafetyReviewAgent = async (triageData) => {
       }
     `;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const response = await fetch("https://text.pollinations.ai/", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: "openai",
+        jsonMode: true,
         messages: [
           { role: "system", content: "You are a medical safety JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -255,15 +252,14 @@ export const runBillingAgent = async (triageData) => {
       }
     `;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const response = await fetch("https://text.pollinations.ai/", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: "openai",
+        jsonMode: true,
         messages: [
           { role: "system", content: "You are a Medical Billing JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -301,15 +297,14 @@ export const runPharmacovigilanceAgent = async (triageData, pastMedicalHistory) 
       }
     `;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const response = await fetch("https://text.pollinations.ai/", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: "openai",
+        jsonMode: true,
         messages: [
           { role: "system", content: "You are a Pharmacovigilance JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -347,15 +342,14 @@ export const generateSOAPNote = async (transcript) => {
       }
     `;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const response = await fetch("https://text.pollinations.ai/", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: "openai",
+        jsonMode: true,
         messages: [
           { role: "system", content: "You are a Medical SOAP Note AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -402,15 +396,14 @@ export const checkDrugInteractions = async (drugs, genes) => {
       }
     `;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const response = await fetch("https://text.pollinations.ai/", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: "openai",
+        jsonMode: true,
         messages: [
           { role: "system", content: "You are a Pharmacogenomics AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
