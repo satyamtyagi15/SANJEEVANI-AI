@@ -1,7 +1,7 @@
 // VisionService for processing Medical Prescriptions via OpenRouter
 const p1 = "sk-or-v1-";
-const p2 = "d8eb6715ba38c4a711290758c82e8cbfde6a8533d068cd39ec1d9458fd1bc4ce";
-const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY || (p1 + p2);
+const p2 = "e88595895bcfc40899d955708e4fade451e3033ba47ddf423be0685826682c21";
+const apiKey = p1 + p2;
 
 export const scanMedicalRecord = async (base64Image) => {
   try {
