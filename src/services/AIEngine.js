@@ -86,8 +86,6 @@ export const generateFollowUpQuestion = async (chatHistory, language, pastMedica
     return { question: "", readyForTriage: true };
   }
 };
-  }
-};
 
 export const processTriage = async (chatHistory, language = 'en', pastMedicalHistory = null, visualSymptomContext = null) => {
   try {
