@@ -1,5 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as tf from '@tensorflow/tfjs';
+import '@tensorflow/tfjs-backend-webgl';
+import '@tensorflow/tfjs-backend-cpu';
 import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
 import { Camera, Activity, AlertTriangle, CheckCircle, ShieldAlert, ScanFace, ActivitySquare, Mic, Volume2 } from 'lucide-react';
 
