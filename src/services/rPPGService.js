@@ -42,10 +42,10 @@ export const startScanning = (videoRef, canvasRef, onSignalUpdate, onBpmUpdate, 
   let isScanning = true;
   let frameCount = 0;
   
-  // Variables for signal smoothing and smart demo engine
-  let baseBpm = 75; // Default healthy resting heart rate
-  let time = 0;
-  let lastG = 0;
+  // Variables for real rPPG signal processing
+  let baseBpm = 75; // Starting baseline
+  let signalBuffer = [];
+  let timeBuffer = [];
   let consecutiveNoFaceFrames = 0;
   
   const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true });
@@ -108,6 +108,8 @@ export const startScanning = (videoRef, canvasRef, onSignalUpdate, onBpmUpdate, 
       if (!faceDetected) {
         onSignalUpdate(0);
         onBpmUpdate(0); // This pauses the progress and triggers the RED screen
+        signalBuffer = []; // Clear buffer if human leaves
+        timeBuffer = [];
         requestAnimationFrame(loop);
         return; 
       }
@@ -135,43 +137,80 @@ export const startScanning = (videoRef, canvasRef, onSignalUpdate, onBpmUpdate, 
       if (validPixels < (data.length / 4) * 0.1) {
         onSignalUpdate(0);
         onBpmUpdate(0);
+        signalBuffer = [];
+        timeBuffer = [];
         requestAnimationFrame(loop);
         return; 
       }
 
       const avgG = greenSum / validPixels;
       
-      // --- SMART ENGINE ---
-      time += 0.05; 
-      let deltaG = avgG - lastG;
-      if (Math.abs(deltaG) > 5) deltaG = 0; 
-      lastG = avgG;
+      // --- TRUE 100% REAL rPPG ENGINE ---
+      const currentTime = performance.now();
+      signalBuffer.push(avgG);
+      timeBuffer.push(currentTime);
 
-      let syntheticSignal = 0;
-      const beatCycle = time % (60 / baseBpm);
-      
-      if (beatCycle < 0.1) {
-         syntheticSignal = Math.sin(beatCycle * Math.PI * 10) * 0.2; 
-      } else if (beatCycle > 0.2 && beatCycle < 0.3) {
-         const qrsPhase = (beatCycle - 0.2) * 10;
-         if (qrsPhase < 0.3) syntheticSignal = -0.5; 
-         else if (qrsPhase < 0.6) syntheticSignal = 3.0; 
-         else syntheticSignal = -1.0; 
-      } else if (beatCycle > 0.45 && beatCycle < 0.6) {
-         syntheticSignal = Math.sin((beatCycle - 0.45) * Math.PI * 6.6) * 0.3; 
+      // Keep approx 6-7 seconds of data (assuming ~30fps, 200 frames)
+      if (signalBuffer.length > 200) { 
+        signalBuffer.shift();
+        timeBuffer.shift();
       }
 
-      const finalSignal = syntheticSignal + (deltaG * 0.1); 
-      onSignalUpdate(finalSignal);
-      
-      frameCount++;
-      if (frameCount % 60 === 0) { 
-         const noiseImpact = (deltaG > 0 ? 1 : -1) * Math.floor(Math.random() * 3);
-         let newBpm = baseBpm + noiseImpact;
-         if (newBpm < 60) newBpm = 60;
-         if (newBpm > 100) newBpm = 100;
-         baseBpm = newBpm;
-         onBpmUpdate(newBpm);
+      // We need at least 2 seconds (60 frames) of data to detect meaningful peaks
+      if (signalBuffer.length > 60) {
+        // 1. Detrending (Remove DC offset)
+        const meanG = signalBuffer.reduce((a, b) => a + b, 0) / signalBuffer.length;
+        const detrended = signalBuffer.map(val => val - meanG);
+
+        // 2. Smoothing (Moving Average filter to remove high-frequency noise)
+        const smoothed = [];
+        for (let i = 0; i < detrended.length; i++) {
+          let sum = 0;
+          let count = 0;
+          for (let j = Math.max(0, i - 2); j <= Math.min(detrended.length - 1, i + 2); j++) {
+            sum += detrended[j];
+            count++;
+          }
+          smoothed.push(sum / count);
+        }
+
+        // 3. Time-Domain Peak Detection (Finding the heartbeat pulses)
+        let peaks = [];
+        for (let i = 1; i < smoothed.length - 1; i++) {
+          // A peak is higher than its neighbors and above a slight threshold to ignore micro-noise
+          if (smoothed[i] > smoothed[i - 1] && smoothed[i] > smoothed[i + 1] && smoothed[i] > 0.3) { 
+            peaks.push(timeBuffer[i]);
+          }
+        }
+
+        // 4. Calculate BPM based on interval between true peaks
+        if (peaks.length >= 3) {
+          let totalInterval = 0;
+          for (let i = 1; i < peaks.length; i++) {
+            totalInterval += (peaks[i] - peaks[i - 1]);
+          }
+          const avgInterval = totalInterval / (peaks.length - 1);
+          const calculatedBpm = 60000 / avgInterval; // Convert ms to BPM
+
+          // 5. Sanity bounds (Human heart rate generally between 45 and 180)
+          if (calculatedBpm > 45 && calculatedBpm < 180) {
+             // Exponential moving average to smooth the final BPM display
+             baseBpm = (baseBpm * 0.9) + (calculatedBpm * 0.1); 
+          }
+        }
+        
+        // Push the real detrended signal to the UI graph (amplified for visual clarity)
+        const realSignal = smoothed[smoothed.length - 1] * 2.5;
+        onSignalUpdate(realSignal);
+
+        frameCount++;
+        // Update the UI with the real calculated BPM every ~30 frames (1 second)
+        if (frameCount % 30 === 0) { 
+           onBpmUpdate(Math.round(baseBpm));
+        }
+      } else {
+        // Calibrating phase: Not enough data yet
+        onSignalUpdate(0);
       }
     }
     
