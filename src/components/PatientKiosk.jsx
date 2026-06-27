@@ -4,6 +4,7 @@ import { startListening } from '../services/SpeechService';
 import { processTriage, generateFollowUpQuestion, runSafetyReviewAgent, runBillingAgent, runPharmacovigilanceAgent } from '../services/AIEngine';
 import { scanMedicalRecord, scanRadiologyImage } from '../services/VisionService';
 import TouchlessVitals from './TouchlessVitals';
+import CustomLanguageSelector from './CustomLanguageSelector';
 
 const PatientKiosk = ({ onTriageComplete }) => {
   const [isListening, setIsListening] = useState(false);
@@ -341,37 +342,11 @@ const PatientKiosk = ({ onTriageComplete }) => {
   return (
     <div className="kiosk-section">
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-        <select 
-          className="language-selector" 
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
+        <CustomLanguageSelector 
+          language={language}
+          setLanguage={setLanguage}
           disabled={step === 'vitals'}
-          style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', backgroundColor: '#0b0f19', color: '#fff', border: '1px solid var(--glass-border)' }}
-        >
-          <optgroup label="Indian Regional">
-            <option value="hi-IN">हिन्दी (Hindi)</option>
-            <option value="en-IN">English (India)</option>
-            <option value="bn-IN">বাংলা (Bengali)</option>
-            <option value="mr-IN">मराठी (Marathi)</option>
-            <option value="te-IN">తెలుగు (Telugu)</option>
-            <option value="ta-IN">தமிழ் (Tamil)</option>
-            <option value="gu-IN">ગુજરાતી (Gujarati)</option>
-            <option value="kn-IN">ಕನ್ನಡ (Kannada)</option>
-            <option value="ml-IN">മലയാളം (Malayalam)</option>
-            <option value="pa-IN">ਪੰਜਾਬੀ (Punjabi)</option>
-          </optgroup>
-          <optgroup label="International">
-            <option value="en-US">English (US)</option>
-            <option value="es-ES">Español (Spanish)</option>
-            <option value="fr-FR">Français (French)</option>
-            <option value="ar-SA">العربية (Arabic)</option>
-            <option value="zh-CN">中文 (Mandarin)</option>
-            <option value="ja-JP">日本語 (Japanese)</option>
-            {availableLanguages.filter(l => !['hi-IN', 'en-IN', 'bn-IN', 'mr-IN', 'te-IN', 'ta-IN', 'gu-IN', 'kn-IN', 'ml-IN', 'pa-IN', 'en-US', 'es-ES', 'fr-FR', 'ar-SA', 'zh-CN', 'ja-JP'].includes(l.code)).map(l => (
-              <option key={l.code} value={l.code}>{l.label}</option>
-            ))}
-          </optgroup>
-        </select>
+        />
 
         <div style={{ flex: 1, display: 'flex', position: 'relative' }}>
           <input 
