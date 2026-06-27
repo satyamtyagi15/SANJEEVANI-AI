@@ -3,6 +3,18 @@ const p1 = "sk-or-v1-";
 const p2 = "d8eb6715ba38c4a711290758c82e8cbfde6a8533d068cd39ec1d9458fd1bc4ce";
 const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY || (p1 + p2);
 
+
+const parseJSONOutput = (text) => {
+  try {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+    return JSON.parse(text.replace(/```json/gi, '').replace(/```/g, '').trim());
+  } catch (e) {
+    console.error("JSON parse error:", text);
+    throw e;
+  }
+};
+
 export const generateFollowUpQuestion = async (chatHistory, language, pastMedicalHistory = null, visualSymptomContext = null) => {
   try {
     const formattedHistory = chatHistory.map(msg => `${msg.role === 'user' ? 'Patient' : 'AI'}: ${msg.content}`).join('\n');
@@ -16,7 +28,7 @@ export const generateFollowUpQuestion = async (chatHistory, language, pastMedica
     }
     
     const prompt = `
-      You are an expert Emergency Room Doctor. You are interviewing a patient. The language is: ${language}.
+      You are an expert Emergency Room Doctor. You are interviewing a patient. The language is: ${language}. You MUST respond with flawless grammar. If the language is Hindi, use proper Devanagari script without any random/gibberish characters.
       
       Chat History:
       ${formattedHistory}
@@ -44,7 +56,7 @@ export const generateFollowUpQuestion = async (chatHistory, language, pastMedica
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "google/gemma-2-9b-it:free",
+        model: "meta-llama/llama-3-8b-instruct:free",
         messages: [
           { role: "system", content: "You are a medical JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -54,7 +66,7 @@ export const generateFollowUpQuestion = async (chatHistory, language, pastMedica
 
     const data = await response.json();
     let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-    return JSON.parse(responseText);
+    return parseJSONOutput(responseText);
 
   } catch (error) {
     console.error("Follow-up error:", error);
@@ -139,7 +151,7 @@ export const processTriage = async (chatHistory, language = 'en', pastMedicalHis
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "google/gemma-2-9b-it:free",
+        model: "meta-llama/llama-3-8b-instruct:free",
         messages: [
           { role: "system", content: "You are a medical JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -153,7 +165,7 @@ export const processTriage = async (chatHistory, language = 'en', pastMedicalHis
     let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
     
     let parsedData;
-    try { parsedData = JSON.parse(responseText); } 
+    try { parsedData = parseJSONOutput(responseText); } 
     catch (e) { throw new Error("Invalid JSON response from AI."); }
 
     return {
@@ -219,7 +231,7 @@ export const runSafetyReviewAgent = async (triageData) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "google/gemma-2-9b-it:free",
+        model: "meta-llama/llama-3-8b-instruct:free",
         messages: [
           { role: "system", content: "You are a medical safety JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -229,7 +241,7 @@ export const runSafetyReviewAgent = async (triageData) => {
 
     const data = await response.json();
     let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-    return JSON.parse(responseText);
+    return parseJSONOutput(responseText);
 
   } catch (error) {
     console.error("Safety Agent Error:", error);
@@ -263,7 +275,7 @@ export const runBillingAgent = async (triageData) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "google/gemma-2-9b-it:free",
+        model: "meta-llama/llama-3-8b-instruct:free",
         messages: [
           { role: "system", content: "You are a Medical Billing JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -273,7 +285,7 @@ export const runBillingAgent = async (triageData) => {
 
     const data = await response.json();
     let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-    return JSON.parse(responseText);
+    return parseJSONOutput(responseText);
 
   } catch (error) {
     console.error("Billing Agent Error:", error);
@@ -309,7 +321,7 @@ export const runPharmacovigilanceAgent = async (triageData, pastMedicalHistory) 
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "google/gemma-2-9b-it:free",
+        model: "meta-llama/llama-3-8b-instruct:free",
         messages: [
           { role: "system", content: "You are a Pharmacovigilance JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -319,7 +331,7 @@ export const runPharmacovigilanceAgent = async (triageData, pastMedicalHistory) 
 
     const data = await response.json();
     let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-    return JSON.parse(responseText);
+    return parseJSONOutput(responseText);
 
   } catch (error) {
     console.error("Pharmacovigilance Agent Error:", error);
@@ -355,7 +367,7 @@ export const generateSOAPNote = async (transcript) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "google/gemma-2-9b-it:free",
+        model: "meta-llama/llama-3-8b-instruct:free",
         messages: [
           { role: "system", content: "You are a Medical SOAP Note AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -366,7 +378,7 @@ export const generateSOAPNote = async (transcript) => {
     if (!response.ok) throw new Error("API failed");
     const data = await response.json();
     let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-    return JSON.parse(responseText);
+    return parseJSONOutput(responseText);
   } catch (error) {
     console.error("AutoScribe Error:", error);
     throw new Error("Failed to generate SOAP note.");
@@ -410,7 +422,7 @@ export const checkDrugInteractions = async (drugs, genes) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "google/gemma-2-9b-it:free",
+        model: "meta-llama/llama-3-8b-instruct:free",
         messages: [
           { role: "system", content: "You are a Pharmacogenomics AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -431,7 +443,7 @@ export const checkDrugInteractions = async (drugs, genes) => {
       responseText = jsonMatch[0];
     }
     
-    return JSON.parse(responseText);
+    return parseJSONOutput(responseText);
   } catch (error) {
     console.error("Pharma AI Error:", error);
     throw new Error("Failed to analyze drug interactions.");
@@ -482,7 +494,7 @@ export const runMultiAgentDebate = async (patientCase) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "google/gemma-2-9b-it:free", // 100% FREE auto-router, prevents 429 Too Many Requests errors
+        model: "meta-llama/llama-3-8b-instruct:free", // 100% FREE auto-router, prevents 429 Too Many Requests errors
         max_tokens: 2500,
         messages: [
           { role: "system", content: "You are a medical JSON AI. Output only valid raw JSON without any markdown code blocks or conversational text." },
@@ -499,7 +511,7 @@ export const runMultiAgentDebate = async (patientCase) => {
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) responseText = jsonMatch[0];
 
-    return JSON.parse(responseText);
+    return parseJSONOutput(responseText);
 
   } catch (error) {
     console.error("Multi-Agent Error:", error);
@@ -553,7 +565,7 @@ export const generateDigitalTwinTrajectory = async (patientData) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "google/gemma-2-9b-it:free", // 100% FREE auto-router model
+        model: "meta-llama/llama-3-8b-instruct:free", // 100% FREE auto-router model
         messages: [
           { role: "system", content: "You are a Digital Twin JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -569,7 +581,7 @@ export const generateDigitalTwinTrajectory = async (patientData) => {
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) responseText = jsonMatch[0];
 
-    return JSON.parse(responseText);
+    return parseJSONOutput(responseText);
 
   } catch (error) {
     console.error("Digital Twin Error:", error);
@@ -611,7 +623,7 @@ export const analyzeGenomicSequence = async (dnaSequence) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "google/gemma-2-9b-it:free", // 100% FREE auto-router model
+        model: "meta-llama/llama-3-8b-instruct:free", // 100% FREE auto-router model
         messages: [
           { role: "system", content: "You are a Genomics JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -627,7 +639,7 @@ export const analyzeGenomicSequence = async (dnaSequence) => {
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) responseText = jsonMatch[0];
 
-    return JSON.parse(responseText);
+    return parseJSONOutput(responseText);
 
   } catch (error) {
     console.error("Genomics Error:", error);
@@ -664,7 +676,7 @@ export const analyzeArtTherapyEmotion = async (userEmotion) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "google/gemma-2-9b-it:free", 
+        model: "meta-llama/llama-3-8b-instruct:free", 
         messages: [
           { role: "system", content: "You are an Art Therapy JSON AI. Output only valid raw JSON." },
           { role: "user", content: prompt }
@@ -680,7 +692,7 @@ export const analyzeArtTherapyEmotion = async (userEmotion) => {
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) responseText = jsonMatch[0];
 
-    return JSON.parse(responseText);
+    return parseJSONOutput(responseText);
 
   } catch (error) {
     console.error("Art Therapy Error:", error);
