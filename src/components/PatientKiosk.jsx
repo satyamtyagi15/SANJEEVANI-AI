@@ -69,6 +69,31 @@ const PatientKiosk = ({ onTriageComplete }) => {
     }
   }, []);
 
+  const compressImage = (file, maxWidth = 800) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.6)); // High compression to prevent API timeouts
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const speakText = (text) => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel(); // Stop any ongoing speech
@@ -259,26 +284,22 @@ const PatientKiosk = ({ onTriageComplete }) => {
     }
   };
 
-  const handleReportUpload = (e) => {
+  const handleReportUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setIsScanningReport(true);
     setErrorMsg(null);
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64String = reader.result;
-      try {
-        const historyData = await scanMedicalRecord(base64String);
-        setPastMedicalHistory(historyData);
-      } catch (err) {
-        setErrorMsg(err.message);
-      } finally {
-        setIsScanningReport(false);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressedBase64 = await compressImage(file, 1000); // 1000px for text readability
+      const historyData = await scanMedicalRecord(compressedBase64);
+      setPastMedicalHistory(historyData);
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setIsScanningReport(false);
+    }
   };
 
   const handleVitalsComplete = async (bpm, painIndex) => {
@@ -340,29 +361,25 @@ const PatientKiosk = ({ onTriageComplete }) => {
     setCurrentTriageData(null);
   };
 
-  const handleVisionUpload = (e) => {
+  const handleVisionUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setIsScanningVision(true);
     setErrorMsg(null);
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      try {
-        const base64Image = reader.result;
-        const analysis = await scanRadiologyImage(base64Image);
-        const findingString = `Visual findings: ${analysis.findings}. Impression: ${analysis.impression}. Severity: ${analysis.severity}.`;
-        setVisualFindings(findingString);
-        speakText("Visual symptom successfully analyzed by AI. Please continue speaking your symptoms.");
-      } catch (err) {
-        console.error("Vision Upload Error:", err);
-        setErrorMsg("Failed to analyze image: " + err.message);
-      } finally {
-        setIsScanningVision(false);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressedBase64 = await compressImage(file, 600); // Highly compressed for fast vision scan
+      const analysis = await scanRadiologyImage(compressedBase64);
+      const findingString = `Visual findings: ${analysis.findings}. Impression: ${analysis.impression}. Severity: ${analysis.severity}.`;
+      setVisualFindings(findingString);
+      speakText("Visual symptom successfully analyzed by AI. Please continue speaking your symptoms.");
+    } catch (err) {
+      console.error("Vision Upload Error:", err);
+      setErrorMsg("Failed to analyze image: " + err.message);
+    } finally {
+      setIsScanningVision(false);
+    }
   };
 
   return (
