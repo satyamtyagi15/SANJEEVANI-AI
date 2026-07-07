@@ -36,8 +36,12 @@ export const generateFollowUpQuestion = async (chatHistory, language, pastMedica
       }
     `;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout for follow-up
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
@@ -53,6 +57,8 @@ export const generateFollowUpQuestion = async (chatHistory, language, pastMedica
     });
 
     const data = await response.json();
+    clearTimeout(timeoutId);
+
     let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
     return JSON.parse(responseText);
 
@@ -131,8 +137,12 @@ export const processTriage = async (chatHistory, language = 'en', pastMedicalHis
       }
     `;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout for triage
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
@@ -147,9 +157,11 @@ export const processTriage = async (chatHistory, language = 'en', pastMedicalHis
       })
     });
 
+    const data = await response.json();
+    clearTimeout(timeoutId);
+
     if (!response.ok) throw new Error(`OpenRouter Error: ${response.status}`);
 
-    const data = await response.json();
     let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
     
     let parsedData;

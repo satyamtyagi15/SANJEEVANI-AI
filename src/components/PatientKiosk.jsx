@@ -236,7 +236,8 @@ const PatientKiosk = ({ onTriageComplete }) => {
       const aiFollowUp = await generateFollowUpQuestion(newHistory, languageName, pastMedicalHistory, visualFindings);
       
       // Enforce at least 1 follow-up turn (newHistory.length >= 3 means user -> AI -> user)
-      if ((aiFollowUp.readyForTriage && newHistory.length >= 3) || newHistory.length >= 6) { 
+      // If AI completely fails and returns empty question, forcefully proceed to triage to prevent hang.
+      if (!aiFollowUp.question || (aiFollowUp.readyForTriage && newHistory.length >= 3) || newHistory.length >= 6) { 
         const triageData = await processTriage(newHistory, languageName, pastMedicalHistory, visualFindings, patientId);
         setCurrentTriageData(triageData);
         setStep('vitals');
