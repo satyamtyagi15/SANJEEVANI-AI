@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const Report = require('./models/Report');
+import mongoose from 'mongoose';
+import Report from './models/Report.js';
 
 // Reusable database connection logic for serverless environments
 let cachedDb = null;
@@ -18,7 +18,7 @@ async function connectToDatabase() {
   return db;
 }
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   // CORS Headers for Vercel
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
