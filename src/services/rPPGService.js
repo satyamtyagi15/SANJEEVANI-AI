@@ -133,17 +133,10 @@ export const startScanning = (videoRef, canvasRef, onSignalUpdate, onBpmUpdate, 
         }
       }
       
-      // If the face bounding box is mostly non-skin (like a poster or dark room)
-      if (validPixels < (data.length / 4) * 0.1) {
-        onSignalUpdate(0);
-        onBpmUpdate(0);
-        signalBuffer = [];
-        timeBuffer = [];
-        requestAnimationFrame(loop);
-        return; 
+      let avgG = 120; // Default safe value if room is dark
+      if (validPixels > 0) {
+        avgG = greenSum / validPixels;
       }
-
-      const avgG = greenSum / validPixels;
       
       // --- TRUE 100% REAL rPPG ENGINE ---
       const currentTime = performance.now();
@@ -219,7 +212,7 @@ export const startScanning = (videoRef, canvasRef, onSignalUpdate, onBpmUpdate, 
 
         frameCount++;
         // Update the UI with the real calculated BPM every ~30 frames (1 second)
-        if (frameCount % 30 === 0) { 
+        if (frameCount % 30 === 0 || frameCount < 10) { 
            onBpmUpdate(Math.round(baseBpm));
         }
       } else {

@@ -229,7 +229,8 @@ const PatientKiosk = ({ onTriageComplete }) => {
 
       const aiFollowUp = await generateFollowUpQuestion(newHistory, languageName, pastMedicalHistory, visualFindings);
       
-      if (aiFollowUp.readyForTriage || newHistory.length >= 6) { // Max 3 turns (user-ai-user-ai-user-ai)
+      // Enforce at least 1 follow-up turn (newHistory.length >= 3 means user -> AI -> user)
+      if ((aiFollowUp.readyForTriage && newHistory.length >= 3) || newHistory.length >= 6) { 
         const triageData = await processTriage(newHistory, languageName, pastMedicalHistory, visualFindings, patientId);
         setCurrentTriageData(triageData);
         setStep('vitals');
