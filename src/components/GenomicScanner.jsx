@@ -1,12 +1,30 @@
 import React, { useState } from 'react';
 import { analyzeGenomicSequence } from '../services/AIEngine';
-import { Dna, Fingerprint, Loader2, Search, AlertOctagon, ShieldCheck, Activity, Database, GitMerge, Network, CheckCircle, Target } from 'lucide-react';
-
+import { saveReportToDB, downloadPDF } from '../services/ReportService';
+import { Dna, Fingerprint, Loader2, Search, AlertOctagon, ShieldCheck, Activity, Database, GitMerge, Network, CheckCircle, Target, Save, Download } from 'lucide-react';
 const GenomicScanner = () => {
   const [sequence, setSequence] = useState('ATGCGTACGTTAGCTAGCTAGCTGATCGATCGTAGCTAGCTAGCTAGCTGATCGATCGATCGTAGCTAGCTAGCTAGCTGATCGATCG');
   const [isScanning, setIsScanning] = useState(false);
   const [report, setReport] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveReport = async () => {
+    if (!report) return;
+    setIsSaving(true);
+    try {
+      await saveReportToDB('Genomic', report);
+      alert('Report saved to database successfully!');
+    } catch (err) {
+      alert('Failed to save report: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDownload = () => {
+    downloadPDF('genomic-report', `Genomic_Report_${new Date().getTime()}`);
+  };
 
   const handleScan = async () => {
     if (!sequence.trim() || sequence.length < 20) {
@@ -111,7 +129,7 @@ const GenomicScanner = () => {
           )}
 
           {report && (
-            <div style={{ animation: 'fadeIn 0.5s ease-out', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <div id="genomic-report" style={{ animation: 'fadeIn 0.5s ease-out', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
               
               {/* Top Banner */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', background: 'rgba(0,0,0,0.4)', borderRadius: '12px', borderLeft: `4px solid ${getRiskColor(report.riskLevel)}`, border: `1px solid ${getRiskColor(report.riskLevel)}40` }}>
@@ -185,6 +203,24 @@ const GenomicScanner = () => {
                     {report.crisprTarget}
                   </div>
                 </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <button 
+                  onClick={handleSaveReport}
+                  disabled={isSaving}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 'bold', cursor: isSaving ? 'not-allowed' : 'pointer' }}
+                >
+                  {isSaving ? <Loader2 size={18} className="spin" /> : <Save size={18} />}
+                  {isSaving ? 'Saving...' : 'Save Report'}
+                </button>
+                <button 
+                  onClick={handleDownload}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--primary)', background: 'transparent', color: 'var(--primary)', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  <Download size={18} />
+                  Download PDF
+                </button>
               </div>
 
             </div>

@@ -1,13 +1,31 @@
 import React, { useState } from 'react';
 import { analyzeArtTherapyEmotion } from '../services/AIEngine';
-import { Palette, HeartHandshake, Loader2, Download, Sparkles, Brain, Heart } from 'lucide-react';
-
+import { saveReportToDB, downloadPDF } from '../services/ReportService';
+import { Palette, HeartHandshake, Loader2, Download, Sparkles, Brain, Heart, Save } from 'lucide-react';
 const ArtTherapy = () => {
   const [prompt, setPrompt] = useState('');
   const [imageUrl, setImageUrl] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiReport, setAiReport] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveReport = async () => {
+    if (!aiReport || !imageUrl) return;
+    setIsSaving(true);
+    try {
+      await saveReportToDB('ArtTherapy', { ...aiReport, imageUrl });
+      alert('Report saved to database successfully!');
+    } catch (err) {
+      alert('Failed to save report: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDownload = () => {
+    downloadPDF('art-therapy-report', `Art_Therapy_Report_${new Date().getTime()}`);
+  };
 
   const generateArt = async () => {
     if (!prompt.trim()) return;
@@ -80,7 +98,7 @@ const ArtTherapy = () => {
 
           {/* AI Psychological Analysis */}
           {aiReport && (
-            <div style={{ animation: 'fadeIn 0.5s ease-out', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div id="art-therapy-report" style={{ animation: 'fadeIn 0.5s ease-out', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               
               <div style={{ background: 'rgba(147, 51, 234, 0.1)', border: '1px solid rgba(147, 51, 234, 0.3)', padding: '1.5rem', borderRadius: '12px' }}>
                 <h4 style={{ color: '#c084fc', margin: '0 0 0.8rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Brain size={18} /> Psychological Insight</h4>
@@ -105,6 +123,24 @@ const ArtTherapy = () => {
                   </div>
                 </div>
               )}
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <button 
+                  onClick={handleSaveReport}
+                  disabled={isSaving || !imageUrl}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 'bold', cursor: (isSaving || !imageUrl) ? 'not-allowed' : 'pointer' }}
+                >
+                  {isSaving ? <Loader2 size={18} className="spin" /> : <Save size={18} />}
+                  {isSaving ? 'Saving...' : 'Save Report'}
+                </button>
+                <button 
+                  onClick={handleDownload}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--primary)', background: 'transparent', color: 'var(--primary)', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  <Download size={18} />
+                  Download PDF
+                </button>
+              </div>
 
             </div>
           )}

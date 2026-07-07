@@ -1,0 +1,18 @@
+const mongoose = require('mongoose');
+
+const reportSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    required: true,
+  },
+  data: {
+    type: mongoose.Schema.Types.Mixed,
+    required: true,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+module.exports = mongoose.models.Report || mongoose.model('Report', reportSchema);

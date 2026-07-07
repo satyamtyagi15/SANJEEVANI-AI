@@ -1,14 +1,33 @@
 import React, { useState, useRef } from 'react';
 import { UploadCloud, Image as ImageIcon, Loader2, FileText, AlertCircle } from 'lucide-react';
 import { scanRadiologyImage } from '../services/VisionService';
-
+import { saveReportToDB, downloadPDF } from '../services/ReportService';
+import { Save, Download } from 'lucide-react';
 const VisionAI = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [report, setReport] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef(null);
+
+  const handleSaveReport = async () => {
+    if (!report) return;
+    setIsSaving(true);
+    try {
+      await saveReportToDB('VisionAI', report);
+      alert('Report saved to database successfully!');
+    } catch (err) {
+      alert('Failed to save report: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDownload = () => {
+    downloadPDF('vision-ai-report', `Radiology_Report_${new Date().getTime()}`);
+  };
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -129,7 +148,7 @@ const VisionAI = () => {
             <p>Upload and scan an image to generate a diagnostic report.</p>
           </div>
         ) : (
-          <div className="ehr-card" style={{ flex: 1, overflowY: 'auto', borderLeft: `4px solid ${report.severity === 'Critical' || report.severity === 'Severe' ? 'var(--status-red)' : report.severity === 'Moderate' ? 'var(--status-yellow)' : 'var(--status-green)'}` }}>
+          <div id="vision-ai-report" className="ehr-card" style={{ flex: 1, overflowY: 'auto', borderLeft: `4px solid ${report.severity === 'Critical' || report.severity === 'Severe' ? 'var(--status-red)' : report.severity === 'Moderate' ? 'var(--status-yellow)' : 'var(--status-green)'}` }}>
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
               <div>
@@ -170,6 +189,24 @@ const VisionAI = () => {
                   <span style={{ color: '#e2e8f0' }}>{report.recommendation}</span>
                 </div>
               </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+              <button 
+                onClick={handleSaveReport}
+                disabled={isSaving}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 'bold', cursor: isSaving ? 'not-allowed' : 'pointer' }}
+              >
+                {isSaving ? <Loader2 size={18} className="spin" /> : <Save size={18} />}
+                {isSaving ? 'Saving...' : 'Save Report'}
+              </button>
+              <button 
+                onClick={handleDownload}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--primary)', background: 'transparent', color: 'var(--primary)', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                <Download size={18} />
+                Download PDF
+              </button>
             </div>
 
           </div>
