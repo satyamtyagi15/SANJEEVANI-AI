@@ -33,7 +33,7 @@ export const scanMedicalRecord = async (base64Image) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3.2-11b-vision-instruct:free", // 100% FREE lightning fast multimodal model
+        model: "nvidia/nemotron-nano-12b-v2-vl:free", // 100% FREE lightning fast multimodal model
         max_tokens: 800,
         messages: [
           {
@@ -101,7 +101,7 @@ export const scanRadiologyImage = async (base64Image) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3.2-11b-vision-instruct:free", // 100% FREE lightning fast multimodal model
+        model: "nvidia/nemotron-nano-12b-v2-vl:free", // 100% FREE lightning fast multimodal model
         max_tokens: 800,
         messages: [
           {
