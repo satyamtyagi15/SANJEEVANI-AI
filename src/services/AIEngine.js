@@ -52,7 +52,7 @@ export const generateFollowUpQuestion = async (chatHistory, language, pastMedica
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "meta-llama/llama-3.3-70b-instruct:free",
+            model: "google/gemini-2.5-flash:free",
             messages: [
               { role: "system", content: "You are a medical JSON AI. Output only valid raw JSON." },
               { role: "user", content: prompt }
@@ -166,9 +166,10 @@ export const processTriage = async (chatHistory, language = 'en', pastMedicalHis
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
+        model: "google/gemini-2.5-flash:free",
+        max_tokens: 1500,
         messages: [
-          { role: "system", content: "You are a medical JSON AI. Output only valid raw JSON." },
+          { role: "system", content: "You are a Medical JSON AI. Output only raw JSON." },
           { role: "user", content: prompt }
         ]
       })
