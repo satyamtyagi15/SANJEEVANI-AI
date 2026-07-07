@@ -70,7 +70,11 @@ const PatientKiosk = ({ onTriageComplete }) => {
   }, []);
 
   const compressImage = (file, maxWidth = 800) => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith('image/')) {
+        reject(new Error("Please upload a valid image file (JPG/PNG). PDFs are not supported for this scan."));
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
@@ -88,8 +92,10 @@ const PatientKiosk = ({ onTriageComplete }) => {
           ctx.drawImage(img, 0, 0, width, height);
           resolve(canvas.toDataURL('image/jpeg', 0.6)); // High compression to prevent API timeouts
         };
+        img.onerror = () => reject(new Error("Failed to load image. It might be corrupted."));
         img.src = event.target.result;
       };
+      reader.onerror = () => reject(new Error("Failed to read the file."));
       reader.readAsDataURL(file);
     });
   };

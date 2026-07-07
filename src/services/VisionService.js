@@ -24,8 +24,12 @@ export const scanMedicalRecord = async (base64Image) => {
       If a field is not present in the document, return an empty array or null.
     `;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
@@ -46,6 +50,8 @@ export const scanMedicalRecord = async (base64Image) => {
         ]
       })
     });
+    
+    clearTimeout(timeoutId);
 
     const data = await response.json();
     
@@ -92,8 +98,12 @@ export const scanRadiologyImage = async (base64Image) => {
       }
     `;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
@@ -114,6 +124,8 @@ export const scanRadiologyImage = async (base64Image) => {
         ]
       })
     });
+    
+    clearTimeout(timeoutId);
 
     const data = await response.json();
     
