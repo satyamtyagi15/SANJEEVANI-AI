@@ -14,7 +14,13 @@ export const saveReportToDB = async (type, patientId, data) => {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to save report');
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        throw new Error('Failed to save report: Server error');
+      }
+      throw new Error(errorData.error || 'Failed to save report');
     }
 
     return await response.json();
