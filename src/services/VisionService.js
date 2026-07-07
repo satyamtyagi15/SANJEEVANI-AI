@@ -51,9 +51,8 @@ export const scanMedicalRecord = async (base64Image) => {
       })
     });
     
-    clearTimeout(timeoutId);
-
     const data = await response.json();
+    clearTimeout(timeoutId); // Move this AFTER json() so we don't hang while downloading body
     
     if (!response.ok || data.error) {
       throw new Error(data.error?.message || "Vision API Error");
@@ -125,9 +124,8 @@ export const scanRadiologyImage = async (base64Image) => {
       })
     });
     
-    clearTimeout(timeoutId);
-
     const data = await response.json();
+    clearTimeout(timeoutId);
     
     if (!response.ok || data.error) {
       throw new Error(data.error?.message || "Vision API Error");
