@@ -259,7 +259,13 @@ const PatientKiosk = ({ onTriageComplete }) => {
       // Revert the last user message so they can try submitting again
       setChatHistory(newHistory.slice(0, -1));
       setManualText(newHistory[newHistory.length - 1].content);
-      setErrorMsg("AI network error or rate limit reached. Please click Reply to try again.");
+      setErrorMsg("AI network error or rate limit reached. Please try again.");
+      
+      // If it failed on the very first turn, revert back to the symptoms screen
+      // so the UI doesn't get stuck on an empty followup screen.
+      if (newHistory.length === 1) {
+        setStep('symptoms');
+      }
     } finally {
       setIsProcessing(false);
     }
