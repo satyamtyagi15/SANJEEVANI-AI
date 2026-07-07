@@ -3,6 +3,7 @@ import { Mic, Loader2, Save, Activity, FileText, Download } from 'lucide-react';
 import { startListening } from '../services/SpeechService';
 import { generateSOAPNote } from '../services/AIEngine';
 import { saveReportToDB, downloadPDF } from '../services/ReportService';
+import { showAlert } from '../services/AlertService';
 
 const AutoScribe = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -19,15 +20,15 @@ const AutoScribe = () => {
   const handleSaveReport = async () => {
     if (!soapNote) return;
     if (!patientId.trim()) {
-      alert('Patient ID is mandatory to save reports in the EHR system.');
+      showAlert('Patient ID is mandatory to save reports in the EHR system.', 'error');
       return;
     }
     setIsSaving(true);
     try {
       await saveReportToDB('AutoScribe', patientId, soapNote);
-      alert('SOAP Note saved to database successfully!');
+      showAlert('SOAP Note saved to database successfully!', 'success');
     } catch (err) {
-      alert('Failed to save report: ' + err.message);
+      showAlert('Failed to save report: ' + err.message, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -193,6 +194,13 @@ const AutoScribe = () => {
               >
                 <Download size={18} />
                 Download PDF
+              </button>
+              <button 
+                onClick={() => { setTranscript(''); setInterimTranscript(''); setSoapNote(null); setErrorMsg(''); }}
+                disabled={isSaving}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: '#fff', fontWeight: 'bold', cursor: isSaving ? 'not-allowed' : 'pointer' }}
+              >
+                Clear
               </button>
             </div>
           </div>

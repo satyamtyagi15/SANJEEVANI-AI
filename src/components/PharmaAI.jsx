@@ -85,14 +85,23 @@ const PharmaAI = () => {
 
         {errorMsg && <p style={{ color: 'var(--status-red)', marginBottom: '1rem' }}>{errorMsg}</p>}
 
-        <button 
-          onClick={analyzePolypharmacy} 
-          disabled={isProcessing || drugs.length < 2}
-          style={{ width: '100%', padding: '1.2rem', borderRadius: '8px', border: 'none', background: 'linear-gradient(90deg, var(--primary), var(--accent))', color: '#fff', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', opacity: drugs.length < 2 ? 0.5 : 1 }}
-        >
-          {isProcessing ? <Loader2 className="spin" size={24} /> : <Search size={24} />}
-          {isProcessing ? "ANALYZING PATHWAYS..." : "ANALYZE INTERACTIONS"}
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button 
+            onClick={analyzePolypharmacy} 
+            disabled={isProcessing || drugs.length < 2}
+            style={{ flex: 2, padding: '1.2rem', borderRadius: '8px', border: 'none', background: 'linear-gradient(90deg, var(--primary), var(--accent))', color: '#fff', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', opacity: drugs.length < 2 ? 0.5 : 1 }}
+          >
+            {isProcessing ? <Loader2 className="spin" size={24} /> : <Search size={24} />}
+            {isProcessing ? "ANALYZING PATHWAYS..." : "ANALYZE INTERACTIONS"}
+          </button>
+          <button 
+            onClick={() => { setDrugs([]); setCurrentDrug(''); setGenes(''); setResult(null); setErrorMsg(''); }}
+            disabled={isProcessing}
+            style={{ flex: 1, padding: '1.2rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: '#fff', fontWeight: 'bold', fontSize: '1.1rem', cursor: isProcessing ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+          >
+            Clear
+          </button>
+        </div>
       </div>
 
       {/* Right Column: AI Risk Matrix */}

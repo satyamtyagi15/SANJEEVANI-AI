@@ -3,6 +3,7 @@ import { UploadCloud, Image as ImageIcon, Loader2, FileText, AlertCircle } from 
 import { scanRadiologyImage } from '../services/VisionService';
 import { saveReportToDB, downloadPDF } from '../services/ReportService';
 import { uploadToCloudinary } from '../services/CloudinaryService';
+import { showAlert } from '../services/AlertService';
 import { Save, Download } from 'lucide-react';
 const VisionAI = () => {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -15,10 +16,9 @@ const VisionAI = () => {
   const fileInputRef = useRef(null);
 
   const handleSaveReport = async () => {
-    if (!report) return;
     if (!report || !imagePreview) return;
     if (!patientId.trim()) {
-      alert('Patient ID is mandatory to save reports in the EHR system.');
+      showAlert('Patient ID is mandatory to save reports in the EHR system.', 'error');
       return;
     }
     
@@ -26,9 +26,9 @@ const VisionAI = () => {
     try {
       const cloudinaryUrl = await uploadToCloudinary(imagePreview, patientId);
       await saveReportToDB('VisionAI', patientId, { ...report, imageUrl: cloudinaryUrl });
-      alert('Image uploaded to Cloudinary and report saved to EHR database successfully!');
+      showAlert('Image uploaded to Cloudinary and report saved to EHR database successfully!', 'success');
     } catch (err) {
-      alert('Failed to save report: ' + err.message);
+      showAlert('Failed to save report: ' + err.message, 'error');
     } finally {
       setIsSaving(false);
     }

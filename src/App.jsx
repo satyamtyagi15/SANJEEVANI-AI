@@ -11,6 +11,7 @@ import DigitalTwin from './components/DigitalTwin';
 import GenomicScanner from './components/GenomicScanner';
 import ArtTherapy from './components/ArtTherapy';
 import PainTracker from './components/PainTracker';
+import CustomAlert from './components/CustomAlert';
 import { epidemicService } from './services/EpidemicService';
 import './styles/App.css';
 
@@ -30,6 +31,7 @@ function App() {
 
   return (
     <div className="super-app-layout">
+      <CustomAlert />
       {/* Sci-Fi Sidebar Navigation */}
       <nav className="sci-fi-sidebar">
         <div className="sidebar-logo">

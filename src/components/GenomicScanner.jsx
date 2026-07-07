@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { analyzeGenomicSequence } from '../services/AIEngine';
 import { saveReportToDB, downloadPDF } from '../services/ReportService';
+import { showAlert } from '../services/AlertService';
 import { Dna, Fingerprint, Loader2, Search, AlertOctagon, ShieldCheck, Activity, Database, GitMerge, Network, CheckCircle, Target, Save, Download } from 'lucide-react';
 const GenomicScanner = () => {
   const [sequence, setSequence] = useState('ATGCGTACGTTAGCTAGCTAGCTGATCGATCGTAGCTAGCTAGCTAGCTGATCGATCGATCGTAGCTAGCTAGCTAGCTGATCGATCG');
@@ -12,12 +13,16 @@ const GenomicScanner = () => {
 
   const handleSaveReport = async () => {
     if (!report) return;
+    if (!patientId.trim()) {
+      showAlert('Patient ID is mandatory to save reports in the EHR system.', 'error');
+      return;
+    }
     setIsSaving(true);
     try {
-      await saveReportToDB('Genomic', patientId || 'Anonymous', report);
-      alert('Report saved to database successfully!');
+      await saveReportToDB('Genomic', patientId, report);
+      showAlert('Report saved to database successfully!', 'success');
     } catch (err) {
-      alert('Failed to save report: ' + err.message);
+      showAlert('Failed to save report: ' + err.message, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -208,7 +213,7 @@ const GenomicScanner = () => {
 
               {/* Patient ID Input Before Save/Download */}
               <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Assign Patient ID (Optional)</label>
+                <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Assign Patient ID (Mandatory)*</label>
                 <input 
                   type="text" 
                   value={patientId}
@@ -218,7 +223,7 @@ const GenomicScanner = () => {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                 <button 
                   onClick={handleSaveReport}
                   disabled={isSaving}
@@ -233,6 +238,13 @@ const GenomicScanner = () => {
                 >
                   <Download size={18} />
                   Download PDF
+                </button>
+                <button 
+                  onClick={() => { setSequence('ATGCGTACGTTAGCTAGCTAGCTGATCGATCGTAGCTAGCTAGCTAGCTGATCGATCGATCGTAGCTAGCTAGCTAGCTGATCGATCG'); setReport(null); setErrorMsg(''); setPatientId(''); }}
+                  disabled={isSaving}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: '#fff', fontWeight: 'bold', cursor: isSaving ? 'not-allowed' : 'pointer' }}
+                >
+                  Clear
                 </button>
               </div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { runMultiAgentDebate } from '../services/AIEngine';
 import { saveReportToDB, downloadPDF } from '../services/ReportService';
+import { showAlert } from '../services/AlertService';
 import { Users, HeartPulse, Brain, Pill, PlayCircle, Loader2, CheckCircle, Activity, Wind, Stethoscope, Droplet, Smile, Sun, Crosshair, Skull, FileBarChart, Dna, Eye, Save, Download } from 'lucide-react';
 
 const MultiAgent = () => {
@@ -17,7 +18,7 @@ const MultiAgent = () => {
   const handleSaveReport = async () => {
     if (!consensus) return;
     if (!patientId.trim()) {
-      alert('Patient ID is mandatory to save reports in the EHR system.');
+      showAlert('Patient ID is mandatory to save reports in the EHR system.', 'error');
       return;
     }
     setIsSaving(true);
@@ -28,9 +29,9 @@ const MultiAgent = () => {
         disagreements: debateLog.map(log => `${log.specialty.toUpperCase()} (${log.agent}): ${log.message}`).join('\n\n')
       };
       await saveReportToDB('MultiAgent', patientId, reportData);
-      alert('Consensus Report saved to database successfully!');
+      showAlert('Consensus Report saved to database successfully!', 'success');
     } catch (err) {
-      alert('Failed to save report: ' + err.message);
+      showAlert('Failed to save report: ' + err.message, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -248,6 +249,13 @@ const MultiAgent = () => {
                 >
                   <Download size={18} />
                   Download PDF
+                </button>
+                <button 
+                  onClick={() => { setCaseDescription(''); setDebateLog([]); setConsensus(null); setErrorMsg(''); setPatientId(''); }}
+                  disabled={isSaving}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: '#fff', fontWeight: 'bold', cursor: isSaving ? 'not-allowed' : 'pointer' }}
+                >
+                  Clear
                 </button>
               </div>
             </div>

@@ -4,6 +4,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import PharmacyPrescriptionWidget from './PharmacyPrescriptionWidget';
 import AnatomicalHeatmap from './AnatomicalHeatmap';
 import { saveReportToDB, downloadPDF } from '../services/ReportService';
+import { showAlert } from '../services/AlertService';
 
 const parseWaitTimeToSeconds = (str) => {
   const match = str.match(/(\d+)/);
@@ -31,9 +32,9 @@ const TriageCard = ({ data }) => {
     setIsSaving(true);
     try {
       await saveReportToDB('Triage', data.patientId, data);
-      alert('Triage Record saved to database successfully!');
+      showAlert('Triage Record saved to database successfully!', 'success');
     } catch (err) {
-      alert('Failed to save report: ' + err.message);
+      showAlert('Failed to save report: ' + err.message, 'error');
     } finally {
       setIsSaving(false);
     }

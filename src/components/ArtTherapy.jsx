@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { analyzeArtTherapyEmotion } from '../services/AIEngine';
 import { saveReportToDB, downloadPDF } from '../services/ReportService';
 import { uploadToCloudinary } from '../services/CloudinaryService';
+import { showAlert } from '../services/AlertService';
 import { Palette, HeartHandshake, Loader2, Download, Sparkles, Brain, Heart, Save } from 'lucide-react';
 const ArtTherapy = () => {
   const [prompt, setPrompt] = useState('');
@@ -15,7 +16,7 @@ const ArtTherapy = () => {
   const handleSaveReport = async () => {
     if (!aiReport || !imageUrl) return;
     if (!patientId.trim()) {
-      alert('Patient ID is mandatory to save reports in the EHR system.');
+      showAlert('Patient ID is mandatory to save reports in the EHR system.', 'error');
       return;
     }
     
@@ -23,9 +24,9 @@ const ArtTherapy = () => {
     try {
       const cloudinaryUrl = await uploadToCloudinary(imageUrl, patientId);
       await saveReportToDB('ArtTherapy', patientId, { ...aiReport, imageUrl: cloudinaryUrl });
-      alert('Image uploaded to Cloudinary and report saved to EHR database successfully!');
+      showAlert('Image uploaded to Cloudinary and report saved to EHR database successfully!', 'success');
     } catch (err) {
-      alert('Failed to save report: ' + err.message);
+      showAlert('Failed to save report: ' + err.message, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -144,11 +145,11 @@ const ArtTherapy = () => {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                 <button 
                   onClick={handleSaveReport}
-                  disabled={isSaving || !imageUrl}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 'bold', cursor: (isSaving || !imageUrl) ? 'not-allowed' : 'pointer' }}
+                  disabled={isSaving}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 'bold', cursor: isSaving ? 'not-allowed' : 'pointer' }}
                 >
                   {isSaving ? <Loader2 size={18} className="spin" /> : <Save size={18} />}
                   {isSaving ? 'Saving...' : 'Save Report'}
@@ -159,6 +160,13 @@ const ArtTherapy = () => {
                 >
                   <Download size={18} />
                   Download PDF
+                </button>
+                <button 
+                  onClick={() => { setPrompt(''); setImageUrl(''); setAiReport(null); setErrorMsg(''); setPatientId(''); }}
+                  disabled={isSaving}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: '#fff', fontWeight: 'bold', cursor: isSaving ? 'not-allowed' : 'pointer' }}
+                >
+                  Clear
                 </button>
               </div>
 
