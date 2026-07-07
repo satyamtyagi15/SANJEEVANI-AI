@@ -91,6 +91,9 @@ export const downloadPDF = async (reportType, patientId, reportData) => {
   // Render content based on type
   if (reportType === 'VisionAI') {
     addSection('Image Type', reportData.imageType);
+    if (reportData.imageUrl) {
+      addSection('Secure Cloud Archive Link', reportData.imageUrl);
+    }
     addSection('Severity', reportData.severity, reportData.severity === 'Critical');
     addSection('Findings', reportData.findings);
     addSection('Impression', reportData.impression);
@@ -111,6 +114,24 @@ export const downloadPDF = async (reportType, patientId, reportData) => {
     if (reportData.colorPalette) {
       addSection('Healing Palette', reportData.colorPalette.join(', '));
     }
+  } else if (reportType === 'AutoScribe') {
+    addSection('Subjective', reportData.subjective);
+    addSection('Objective', reportData.objective);
+    addSection('Assessment', reportData.assessment);
+    addSection('Plan', reportData.plan);
+    if (reportData.icd10) addSection('ICD-10 Codes', reportData.icd10.join(', '));
+  } else if (reportType === 'MultiAgent') {
+    addSection('Patient Case', reportData.caseDescription);
+    addSection('Final Diagnostic Consensus', reportData.consensus);
+    if (reportData.treatmentPlan) addSection('Unified Treatment Plan', reportData.treatmentPlan);
+    addSection('Differentials / Alternatives', reportData.disagreements || 'None noted by the committee.');
+  } else if (reportType === 'Triage') {
+    addSection('Primary Symptoms', reportData.summary);
+    addSection('Priority Level', reportData.priority, reportData.priority === 'red' || reportData.priority === 'yellow');
+    if (reportData.measuredBpm) addSection('Measured Vitals (BPM)', reportData.measuredBpm);
+    if (reportData.visualPainIndex) addSection('Visual Pain Index', reportData.visualPainIndex + '/100');
+    if (reportData.safetyReview) addSection('AI Safety Alert', reportData.safetyReview, true);
+    if (reportData.allergyAlert) addSection('Pharmacovigilance Alert', reportData.allergyAlert, true);
   }
 
   // Footer

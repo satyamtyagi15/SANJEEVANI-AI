@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { UploadCloud, Image as ImageIcon, Loader2, FileText, AlertCircle } from 'lucide-react';
 import { scanRadiologyImage } from '../services/VisionService';
 import { saveReportToDB, downloadPDF } from '../services/ReportService';
+import { uploadToCloudinary } from '../services/CloudinaryService';
 import { Save, Download } from 'lucide-react';
 const VisionAI = () => {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -17,7 +18,13 @@ const VisionAI = () => {
     if (!report) return;
     setIsSaving(true);
     try {
-      await saveReportToDB('VisionAI', patientId || 'Anonymous', report);
+      let finalReportData = { ...report };
+      if (imagePreview) {
+        // Professional explicit linking: Upload image to Cloudinary, tagging with patient ID
+        const cloudUrl = await uploadToCloudinary(imagePreview, patientId || 'Anonymous');
+        finalReportData.imageUrl = cloudUrl; // Save the secure URL into the MongoDB document
+      }
+      await saveReportToDB('VisionAI', patientId || 'Anonymous', finalReportData);
       alert('Report saved to database successfully!');
     } catch (err) {
       alert('Failed to save report: ' + err.message);

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { runMultiAgentDebate } from '../services/AIEngine';
-import { Users, HeartPulse, Brain, Pill, PlayCircle, Loader2, CheckCircle, Activity, Wind, Stethoscope, Droplet, Smile, Sun, Crosshair, Skull, FileBarChart, Dna, Eye } from 'lucide-react';
+import { saveReportToDB, downloadPDF } from '../services/ReportService';
+import { Users, HeartPulse, Brain, Pill, PlayCircle, Loader2, CheckCircle, Activity, Wind, Stethoscope, Droplet, Smile, Sun, Crosshair, Skull, FileBarChart, Dna, Eye, Save, Download } from 'lucide-react';
 
 const MultiAgent = () => {
   const [caseDescription, setCaseDescription] = useState('');
@@ -8,8 +9,37 @@ const MultiAgent = () => {
   const [debateLog, setDebateLog] = useState([]);
   const [consensus, setConsensus] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [patientId, setPatientId] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const chatEndRef = useRef(null);
+
+  const handleSaveReport = async () => {
+    if (!consensus) return;
+    setIsSaving(true);
+    try {
+      const reportData = {
+        caseDescription,
+        consensus,
+        disagreements: debateLog.map(log => `${log.specialty.toUpperCase()} (${log.agent}): ${log.message}`).join('\n\n')
+      };
+      await saveReportToDB('MultiAgent', patientId || 'Anonymous', reportData);
+      alert('Consensus Report saved to database successfully!');
+    } catch (err) {
+      alert('Failed to save report: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDownload = () => {
+    const reportData = {
+      caseDescription,
+      consensus,
+      disagreements: debateLog.map(log => `${log.specialty.toUpperCase()} (${log.agent}): ${log.message}`).join('\n\n')
+    };
+    downloadPDF('MultiAgent', patientId || 'Anonymous', reportData);
+  };
 
   const startDebate = async () => {
     if (!caseDescription.trim()) return;
@@ -187,6 +217,35 @@ const MultiAgent = () => {
                 <CheckCircle size={24} /> Final Unified Consensus
               </h3>
               <p style={{ color: '#fff', lineHeight: '1.7', fontSize: '1.1rem' }}>{consensus}</p>
+              
+              <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Assign Patient ID (Optional)</label>
+                <input 
+                  type="text" 
+                  value={patientId}
+                  onChange={(e) => setPatientId(e.target.value)}
+                  placeholder="e.g. PAT-90812"
+                  style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '1rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                <button 
+                  onClick={handleSaveReport}
+                  disabled={isSaving}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 'bold', cursor: isSaving ? 'not-allowed' : 'pointer' }}
+                >
+                  {isSaving ? <Loader2 size={18} className="spin" /> : <Save size={18} />}
+                  {isSaving ? 'Saving...' : 'Save Report'}
+                </button>
+                <button 
+                  onClick={handleDownload}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--primary)', background: 'transparent', color: 'var(--primary)', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  <Download size={18} />
+                  Download PDF
+                </button>
+              </div>
             </div>
           )}
 

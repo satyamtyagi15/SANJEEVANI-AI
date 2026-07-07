@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Activity, AlertTriangle, CheckCircle, Clock, HeartPulse, Stethoscope, HelpCircle, ShieldAlert, ClipboardList, FileText, CheckSquare, Edit2, Check, DollarSign, AlertOctagon, Volume2, BookOpen, QrCode, X } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle, Clock, HeartPulse, Stethoscope, HelpCircle, ShieldAlert, ClipboardList, FileText, CheckSquare, Edit2, Check, DollarSign, AlertOctagon, Volume2, BookOpen, QrCode, X, Save, Download } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import PharmacyPrescriptionWidget from './PharmacyPrescriptionWidget';
 import AnatomicalHeatmap from './AnatomicalHeatmap';
+import { saveReportToDB, downloadPDF } from '../services/ReportService';
 
 const parseWaitTimeToSeconds = (str) => {
   const match = str.match(/(\d+)/);
@@ -24,6 +25,23 @@ const TriageCard = ({ data }) => {
   const [timeLeft, setTimeLeft] = useState(() => parseWaitTimeToSeconds(data.estimatedWaitTime || "0 mins"));
   const [isTimeOver, setIsTimeOver] = useState(false);
   const [showQrExpanded, setShowQrExpanded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveReport = async () => {
+    setIsSaving(true);
+    try {
+      await saveReportToDB('Triage', data.patientId, data);
+      alert('Triage Record saved to database successfully!');
+    } catch (err) {
+      alert('Failed to save report: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDownload = () => {
+    downloadPDF('Triage', data.patientId, data);
+  };
   
   // Using a louder continuous alarm clock sound
   const alarmAudio = useRef(new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg'));
@@ -411,6 +429,25 @@ const TriageCard = ({ data }) => {
           ) : (
              <p>"{data.originalTranscript}"</p>
           )}
+        </div>
+
+        {/* Save & Download Actions */}
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+          <button 
+            onClick={handleSaveReport}
+            disabled={isSaving}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 'bold', cursor: isSaving ? 'not-allowed' : 'pointer' }}
+          >
+            {isSaving ? <Activity size={18} className="spin" /> : <Save size={18} />}
+            {isSaving ? 'Saving...' : 'Save Triage Record'}
+          </button>
+          <button 
+            onClick={handleDownload}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--primary)', background: 'transparent', color: 'var(--primary)', fontWeight: 'bold', cursor: 'pointer' }}
+          >
+            <Download size={18} />
+            Download PDF
+          </button>
         </div>
       </div>
     </div>
