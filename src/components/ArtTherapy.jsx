@@ -9,12 +9,13 @@ const ArtTherapy = () => {
   const [aiReport, setAiReport] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [patientId, setPatientId] = useState('');
 
   const handleSaveReport = async () => {
     if (!aiReport || !imageUrl) return;
     setIsSaving(true);
     try {
-      await saveReportToDB('ArtTherapy', { ...aiReport, imageUrl });
+      await saveReportToDB('ArtTherapy', patientId || 'Anonymous', { ...aiReport, imageUrl });
       alert('Report saved to database successfully!');
     } catch (err) {
       alert('Failed to save report: ' + err.message);
@@ -24,7 +25,7 @@ const ArtTherapy = () => {
   };
 
   const handleDownload = () => {
-    downloadPDF('art-therapy-report', `Art_Therapy_Report_${new Date().getTime()}`);
+    downloadPDF('ArtTherapy', patientId || 'Anonymous', aiReport);
   };
 
   const generateArt = async () => {
@@ -123,6 +124,18 @@ const ArtTherapy = () => {
                   </div>
                 </div>
               )}
+
+              {/* Patient ID Input Before Save/Download */}
+              <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Assign Patient ID (Optional)</label>
+                <input 
+                  type="text" 
+                  value={patientId}
+                  onChange={(e) => setPatientId(e.target.value)}
+                  placeholder="e.g. PAT-90812"
+                  style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '1rem' }}
+                />
+              </div>
 
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                 <button 

@@ -8,12 +8,13 @@ const GenomicScanner = () => {
   const [report, setReport] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [patientId, setPatientId] = useState('');
 
   const handleSaveReport = async () => {
     if (!report) return;
     setIsSaving(true);
     try {
-      await saveReportToDB('Genomic', report);
+      await saveReportToDB('Genomic', patientId || 'Anonymous', report);
       alert('Report saved to database successfully!');
     } catch (err) {
       alert('Failed to save report: ' + err.message);
@@ -23,7 +24,7 @@ const GenomicScanner = () => {
   };
 
   const handleDownload = () => {
-    downloadPDF('genomic-report', `Genomic_Report_${new Date().getTime()}`);
+    downloadPDF('Genomic', patientId || 'Anonymous', report);
   };
 
   const handleScan = async () => {
@@ -203,6 +204,18 @@ const GenomicScanner = () => {
                     {report.crisprTarget}
                   </div>
                 </div>
+              </div>
+
+              {/* Patient ID Input Before Save/Download */}
+              <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Assign Patient ID (Optional)</label>
+                <input 
+                  type="text" 
+                  value={patientId}
+                  onChange={(e) => setPatientId(e.target.value)}
+                  placeholder="e.g. PAT-90812"
+                  style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '1rem' }}
+                />
               </div>
 
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>

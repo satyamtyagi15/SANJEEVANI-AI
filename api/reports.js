@@ -38,13 +38,13 @@ module.exports = async (req, res) => {
     await connectToDatabase();
 
     if (req.method === 'POST') {
-      const { type, data } = req.body;
+      const { patientId, type, data } = req.body;
       
-      if (!type || !data) {
-        return res.status(400).json({ error: 'Report type and data are required' });
+      if (!patientId || !type || !data) {
+        return res.status(400).json({ error: 'Patient ID, report type, and data are required' });
       }
 
-      const newReport = new Report({ type, data });
+      const newReport = new Report({ patientId, type, data });
       const savedReport = await newReport.save();
       
       return res.status(201).json(savedReport);

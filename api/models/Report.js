@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 
 const reportSchema = new mongoose.Schema({
+  patientId: {
+    type: String,
+    required: true,
+  },
   type: {
     type: String,
     required: true,

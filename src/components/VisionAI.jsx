@@ -10,13 +10,14 @@ const VisionAI = () => {
   const [report, setReport] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [patientId, setPatientId] = useState('');
   const fileInputRef = useRef(null);
 
   const handleSaveReport = async () => {
     if (!report) return;
     setIsSaving(true);
     try {
-      await saveReportToDB('VisionAI', report);
+      await saveReportToDB('VisionAI', patientId || 'Anonymous', report);
       alert('Report saved to database successfully!');
     } catch (err) {
       alert('Failed to save report: ' + err.message);
@@ -26,7 +27,7 @@ const VisionAI = () => {
   };
 
   const handleDownload = () => {
-    downloadPDF('vision-ai-report', `Radiology_Report_${new Date().getTime()}`);
+    downloadPDF('VisionAI', patientId || 'Anonymous', report);
   };
 
   const handleImageUpload = (e) => {
@@ -191,7 +192,19 @@ const VisionAI = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            {/* Patient ID Input Before Save/Download */}
+            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Assign Patient ID (Optional)</label>
+              <input 
+                type="text" 
+                value={patientId}
+                onChange={(e) => setPatientId(e.target.value)}
+                placeholder="e.g. PAT-90812"
+                style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '1rem' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
               <button 
                 onClick={handleSaveReport}
                 disabled={isSaving}
