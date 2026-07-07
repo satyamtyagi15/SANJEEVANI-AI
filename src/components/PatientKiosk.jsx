@@ -235,29 +235,31 @@ const PatientKiosk = ({ onTriageComplete }) => {
 
       const aiFollowUp = await generateFollowUpQuestion(newHistory, languageName, pastMedicalHistory, visualFindings);
       
-      // Enforce at least 1 follow-up turn (newHistory.length >= 3 means user -> AI -> user)
-      // If AI completely fails and returns empty question, forcefully proceed to triage to prevent hang.
-      if (!aiFollowUp.question || (aiFollowUp.readyForTriage && newHistory.length >= 3) || newHistory.length >= 6) { 
+      let aiQuestion = aiFollowUp.question;
+
+      // Check if we meet the minimum conversation depth to allow triage
+      const canTriage = newHistory.length >= 3;
+      
+      // Proceed to triage ONLY if AI is ready AND minimum turns met, or max depth reached
+      if ((aiFollowUp.readyForTriage && canTriage) || newHistory.length >= 6) { 
         const triageData = await processTriage(newHistory, languageName, pastMedicalHistory, visualFindings, patientId);
         setCurrentTriageData(triageData);
         setStep('vitals');
+      } else if (aiQuestion && aiQuestion.trim() !== '') {
+        // Ask next question (even if AI set readyForTriage=true but we haven't met min depth)
+        setCurrentFollowUpQuestion(aiQuestion);
+        setChatHistory([...newHistory, { role: 'ai', content: aiQuestion }]);
+        speakText(aiQuestion);
       } else {
-        // Ask next question
-        const questionText = aiFollowUp.question;
-        setCurrentFollowUpQuestion(questionText);
-        setChatHistory([...newHistory, { role: 'ai', content: questionText }]);
-        speakText(questionText);
+        // AI returned no question and we aren't allowed to triage yet.
+        throw new Error("AI failed to generate a follow-up question.");
       }
     } catch (err) {
-      console.error(err);
-      setErrorMsg("Failed to connect to AI. Generating immediate report.");
-      try {
-        const triageData = await processTriage(newHistory, language, pastMedicalHistory, visualFindings, patientId);
-        setCurrentTriageData(triageData);
-      } catch (e) {
-        setErrorMsg("Critical AI Error. Please seek immediate staff assistance.");
-      }
-      setStep('vitals');
+      console.error("AI Cycle Error:", err);
+      // Revert the last user message so they can try submitting again
+      setChatHistory(newHistory.slice(0, -1));
+      setManualText(newHistory[newHistory.length - 1].content);
+      setErrorMsg("AI network error or rate limit reached. Please click Reply to try again.");
     } finally {
       setIsProcessing(false);
     }

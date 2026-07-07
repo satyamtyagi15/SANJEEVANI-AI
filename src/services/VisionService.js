@@ -73,14 +73,7 @@ export const scanMedicalRecord = async (base64Image) => {
 
   } catch (error) {
     console.error("Vision Processing Error:", error);
-    // FALLBACK: If OpenRouter is rate-limited or times out, provide a realistic mock extraction
-    // to ensure the app remains 100% dynamic and working without breaking the user flow.
-    return {
-      pastDiagnoses: ["Hypertension (Mock)", "Type 2 Diabetes (Mock)"],
-      currentMedications: ["Amlodipine 5mg", "Metformin 500mg"],
-      allergies: ["Penicillin"],
-      labResults: "HbA1c 7.2%, Fasting Blood Sugar 140 mg/dL (Mock extracted data)"
-    };
+    throw new Error("AI engine failed to analyze the document. Network timeout or rate limit.");
   }
 };
 
@@ -157,15 +150,7 @@ export const scanRadiologyImage = async (base64Image) => {
 
   } catch (error) {
     console.error("Radiology Scan Error:", error);
-    // FALLBACK: If OpenRouter is rate-limited or times out, provide a realistic mock visual analysis
-    // to ensure the app remains 100% dynamic and working without breaking the user flow.
-    return {
-      imageType: "Clinical Photograph",
-      findings: "Erythematous macular rash with slight swelling (Mock AI Analysis).",
-      impression: "Contact Dermatitis vs Mild Allergic Reaction.",
-      severity: "Mild",
-      recommendation: "Prescribe topical corticosteroids and monitor."
-    };
+    throw new Error("AI engine failed to analyze the image. Network timeout or rate limit.");
   }
 };
 

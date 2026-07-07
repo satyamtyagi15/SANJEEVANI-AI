@@ -23,49 +23,66 @@ export const generateFollowUpQuestion = async (chatHistory, language, pastMedica
       ${contextStr}
       
       Task: Based on the patient's exact symptoms and any visual context provided, ask ONE highly relevant, diagnostic follow-up question to narrow down the exact cause.
-      DO NOT jump to unrelated life-threatening conditions unless the symptoms actually point to them (e.g., chest pain, shortness of breath, severe trauma).
-      For example, if the patient says they have an itchy red rash, ask about new foods, allergies, recent insect bites, or fever. DO NOT ask about chest pain or numbness unless they complain of arm pain/tightness.
+      DO NOT jump to unrelated life-threatening conditions unless the symptoms actually point to them.
       Be a smart, logical doctor. Ask only ONE question at a time.
       
-      If you feel you have gathered enough diagnostic information (typically after 2-3 questions) OR if the patient mentions a critical emergency, indicate that triage is ready.
+      CRITICAL RULE 1: You MUST ALWAYS generate a medical question in the "question" field. It CANNOT be empty under ANY circumstances. Even if you think you have enough information, ask a concluding or confirming question (e.g., "Are you experiencing anything else before I finalize your report?").
+      CRITICAL RULE 2: If you feel you have gathered enough diagnostic information (after 2-3 questions) OR if the patient mentions a critical emergency, set "readyForTriage": true, BUT YOU MUST STILL PROVIDE A QUESTION.
       
       Respond STRICTLY in this JSON format:
       {
-        "question": "Your highly relevant, logical medical follow up question here in ${language}",
+        "question": "Your highly relevant, logical medical follow up question here in ${language}. THIS MUST NEVER BE EMPTY.",
         "readyForTriage": true/false
       }
     `;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout for follow-up
+    let attempt = 0;
+    while (attempt < 2) {
+      attempt++;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
-        messages: [
-          { role: "system", content: "You are a medical JSON AI. Output only valid raw JSON." },
-          { role: "user", content: prompt }
-        ]
-      })
-    });
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "meta-llama/llama-3.3-70b-instruct:free",
+            messages: [
+              { role: "system", content: "You are a medical JSON AI. Output only valid raw JSON." },
+              { role: "user", content: prompt }
+            ]
+          })
+        });
 
-    const data = await response.json();
-    clearTimeout(timeoutId);
+        const data = await response.json();
+        clearTimeout(timeoutId);
 
-    let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-    return JSON.parse(responseText);
+        let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(responseText);
+
+        // If the AI disobeyed and returned an empty question, throw error to trigger retry
+        if (!parsed.question || parsed.question.trim() === '') {
+          throw new Error("AI returned empty question.");
+        }
+
+        return parsed;
+      } catch (err) {
+        if (attempt >= 2) {
+          throw err;
+        }
+        console.warn(`Attempt ${attempt} failed, retrying AI...`, err);
+      }
+    }
 
   } catch (error) {
-    console.error("Follow-up error:", error);
-    // Fallback: forcefully proceed to triage if API fails
-    return { question: "", readyForTriage: true };
+    console.error("Follow-up AI Error:", error);
+    throw new Error("AI engine failed to generate a response. Network timeout or rate limit.");
   }
 };
 
@@ -223,8 +240,12 @@ export const runSafetyReviewAgent = async (triageData) => {
       }
     `;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
@@ -240,6 +261,8 @@ export const runSafetyReviewAgent = async (triageData) => {
     });
 
     const data = await response.json();
+    clearTimeout(timeoutId);
+
     let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
     return JSON.parse(responseText);
 
@@ -267,8 +290,12 @@ export const runBillingAgent = async (triageData) => {
       }
     `;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
@@ -284,6 +311,8 @@ export const runBillingAgent = async (triageData) => {
     });
 
     const data = await response.json();
+    clearTimeout(timeoutId);
+
     let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
     return JSON.parse(responseText);
 
@@ -313,8 +342,12 @@ export const runPharmacovigilanceAgent = async (triageData, pastMedicalHistory) 
       }
     `;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
@@ -330,6 +363,8 @@ export const runPharmacovigilanceAgent = async (triageData, pastMedicalHistory) 
     });
 
     const data = await response.json();
+    clearTimeout(timeoutId);
+
     let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
     return JSON.parse(responseText);
 

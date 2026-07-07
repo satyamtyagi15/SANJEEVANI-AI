@@ -3,8 +3,10 @@ import { Activity, AlertTriangle, CheckCircle, Clock, HeartPulse, Stethoscope, H
 import { QRCodeCanvas } from 'qrcode.react';
 import PharmacyPrescriptionWidget from './PharmacyPrescriptionWidget';
 import AnatomicalHeatmap from './AnatomicalHeatmap';
-import { saveReportToDB, downloadPDF } from '../services/ReportService';
+import { saveReportToDB } from '../services/ReportService';
 import { showAlert } from '../services/AlertService';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 const parseWaitTimeToSeconds = (str) => {
   const match = str.match(/(\d+)/);
@@ -40,10 +42,33 @@ const TriageCard = ({ data }) => {
     }
   };
 
-  const handleDownload = () => {
-    downloadPDF('Triage', data.patientId, data);
+  const reportRef = useRef(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!reportRef.current) return;
+    setIsDownloading(true);
+    try {
+      const canvas = await html2canvas(reportRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#0f172a'
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Sanjeevani_Triage_${data.patientId}.pdf`);
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      showAlert("Failed to generate PDF.", "error");
+    } finally {
+      setIsDownloading(false);
+    }
   };
-  
+
   // Using a louder continuous alarm clock sound
   const alarmAudio = useRef(new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg'));
 
@@ -111,7 +136,7 @@ const TriageCard = ({ data }) => {
         </div>
       )}
       
-      <div className="glass-panel ehr-card">
+      <div className="glass-panel ehr-card" ref={reportRef}>
         <div className="ehr-header">
         <div className="patient-info" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div>
@@ -444,10 +469,11 @@ const TriageCard = ({ data }) => {
           </button>
           <button 
             onClick={handleDownload}
-            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--primary)', background: 'transparent', color: 'var(--primary)', fontWeight: 'bold', cursor: 'pointer' }}
+            disabled={isDownloading}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--primary)', background: 'transparent', color: 'var(--primary)', fontWeight: 'bold', cursor: isDownloading ? 'not-allowed' : 'pointer' }}
           >
-            <Download size={18} />
-            Download PDF
+            {isDownloading ? <Activity size={18} className="spin" /> : <Download size={18} />}
+            {isDownloading ? 'Downloading...' : 'Download PDF'}
           </button>
         </div>
       </div>
