@@ -18,9 +18,13 @@ const AutoScribe = () => {
 
   const handleSaveReport = async () => {
     if (!soapNote) return;
+    if (!patientId.trim()) {
+      alert('Patient ID is mandatory to save reports in the EHR system.');
+      return;
+    }
     setIsSaving(true);
     try {
-      await saveReportToDB('AutoScribe', patientId || 'Anonymous', soapNote);
+      await saveReportToDB('AutoScribe', patientId, soapNote);
       alert('SOAP Note saved to database successfully!');
     } catch (err) {
       alert('Failed to save report: ' + err.message);
@@ -164,7 +168,7 @@ const AutoScribe = () => {
             </div>
 
             <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Assign Patient ID (Optional)</label>
+              <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Assign Patient ID (Mandatory)*</label>
               <input 
                 type="text" 
                 value={patientId}

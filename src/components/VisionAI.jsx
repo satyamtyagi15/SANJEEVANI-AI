@@ -16,16 +16,17 @@ const VisionAI = () => {
 
   const handleSaveReport = async () => {
     if (!report) return;
+    if (!report || !imagePreview) return;
+    if (!patientId.trim()) {
+      alert('Patient ID is mandatory to save reports in the EHR system.');
+      return;
+    }
+    
     setIsSaving(true);
     try {
-      let finalReportData = { ...report };
-      if (imagePreview) {
-        // Professional explicit linking: Upload image to Cloudinary, tagging with patient ID
-        const cloudUrl = await uploadToCloudinary(imagePreview, patientId || 'Anonymous');
-        finalReportData.imageUrl = cloudUrl; // Save the secure URL into the MongoDB document
-      }
-      await saveReportToDB('VisionAI', patientId || 'Anonymous', finalReportData);
-      alert('Report saved to database successfully!');
+      const cloudinaryUrl = await uploadToCloudinary(imagePreview, patientId);
+      await saveReportToDB('VisionAI', patientId, { ...report, imageUrl: cloudinaryUrl });
+      alert('Image uploaded to Cloudinary and report saved to EHR database successfully!');
     } catch (err) {
       alert('Failed to save report: ' + err.message);
     } finally {
@@ -200,8 +201,8 @@ const VisionAI = () => {
             </div>
 
             {/* Patient ID Input Before Save/Download */}
-            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Assign Patient ID (Optional)</label>
+            <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Assign Patient ID (Mandatory)*</label>
               <input 
                 type="text" 
                 value={patientId}

@@ -16,6 +16,10 @@ const MultiAgent = () => {
 
   const handleSaveReport = async () => {
     if (!consensus) return;
+    if (!patientId.trim()) {
+      alert('Patient ID is mandatory to save reports in the EHR system.');
+      return;
+    }
     setIsSaving(true);
     try {
       const reportData = {
@@ -23,7 +27,7 @@ const MultiAgent = () => {
         consensus,
         disagreements: debateLog.map(log => `${log.specialty.toUpperCase()} (${log.agent}): ${log.message}`).join('\n\n')
       };
-      await saveReportToDB('MultiAgent', patientId || 'Anonymous', reportData);
+      await saveReportToDB('MultiAgent', patientId, reportData);
       alert('Consensus Report saved to database successfully!');
     } catch (err) {
       alert('Failed to save report: ' + err.message);
@@ -219,7 +223,7 @@ const MultiAgent = () => {
               <p style={{ color: '#fff', lineHeight: '1.7', fontSize: '1.1rem' }}>{consensus}</p>
               
               <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Assign Patient ID (Optional)</label>
+                <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Assign Patient ID (Mandatory)*</label>
                 <input 
                   type="text" 
                   value={patientId}
