@@ -290,12 +290,29 @@ const PatientKiosk = ({ onTriageComplete }) => {
     else if (currentTriageData.priority === 'yellow') waitTime = "15 mins";
     else waitTime = `${Math.floor(Math.random() * 30) + 30} mins`;
 
-    // Multi-Agent Execution Pipeline
-    const [safetyReview, billingInfo, allergyAlert] = await Promise.all([
-      runSafetyReviewAgent(currentTriageData),
-      runBillingAgent(currentTriageData),
-      runPharmacovigilanceAgent(currentTriageData, pastMedicalHistory)
-    ]);
+    // Multi-Agent Execution Pipeline with Fallbacks
+    let safetyReview, billingInfo, allergyAlert;
+    try {
+      [safetyReview, billingInfo, allergyAlert] = await Promise.all([
+        runSafetyReviewAgent(currentTriageData).catch(e => {
+          console.error("Safety AI Error:", e);
+          return { safetyNotes: "Safety AI temporarily unavailable.", isApproved: true };
+        }),
+        runBillingAgent(currentTriageData).catch(e => {
+          console.error("Billing AI Error:", e);
+          return { icd10Code: "PENDING", estimatedCostINR: "PENDING", billingNotes: "Billing AI temporarily unavailable." };
+        }),
+        runPharmacovigilanceAgent(currentTriageData, pastMedicalHistory).catch(e => {
+          console.error("Pharma AI Error:", e);
+          return { hasRisk: false, alertMessage: "Pharma AI temporarily unavailable." };
+        })
+      ]);
+    } catch (error) {
+      console.error("Critical Multi-Agent Failure:", error);
+      safetyReview = { safetyNotes: "Safety AI Error.", isApproved: true };
+      billingInfo = { icd10Code: "ERROR", estimatedCostINR: "ERROR", billingNotes: "Billing AI Error." };
+      allergyAlert = { hasRisk: false, alertMessage: "Pharma AI Error." };
+    }
 
     const finalData = {
       ...currentTriageData,
