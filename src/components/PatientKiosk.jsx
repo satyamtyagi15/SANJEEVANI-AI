@@ -21,6 +21,7 @@ const PatientKiosk = ({ onTriageComplete }) => {
   const [patientLocation, setPatientLocation] = useState('');
   const [patientCoords, setPatientCoords] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [patientId, setPatientId] = useState('');
 
   // Chat History for interactive triage
   const [chatHistory, setChatHistory] = useState([]);
@@ -152,6 +153,10 @@ const PatientKiosk = ({ onTriageComplete }) => {
   };
 
   const toggleListening = () => {
+    if (!patientId.trim()) {
+      setErrorMsg("Please assign a Patient ID before starting.");
+      return;
+    }
     setErrorMsg(null);
     if (isListening) {
       if (recognitionRef.current) {
@@ -200,7 +205,7 @@ const PatientKiosk = ({ onTriageComplete }) => {
       const aiFollowUp = await generateFollowUpQuestion(newHistory, languageName, pastMedicalHistory, visualFindings);
       
       if (aiFollowUp.readyForTriage || newHistory.length >= 6) { // Max 3 turns (user-ai-user-ai-user-ai)
-        const triageData = await processTriage(newHistory, languageName, pastMedicalHistory, visualFindings);
+        const triageData = await processTriage(newHistory, languageName, pastMedicalHistory, visualFindings, patientId);
         setCurrentTriageData(triageData);
         setStep('vitals');
       } else {
@@ -214,7 +219,7 @@ const PatientKiosk = ({ onTriageComplete }) => {
       console.error(err);
       setErrorMsg("Failed to connect to AI. Generating immediate report.");
       try {
-        const triageData = await processTriage(newHistory, language, pastMedicalHistory, visualFindings);
+        const triageData = await processTriage(newHistory, language, pastMedicalHistory, visualFindings, patientId);
         setCurrentTriageData(triageData);
       } catch (e) {
         setErrorMsg("Critical AI Error. Please seek immediate staff assistance.");
@@ -226,6 +231,10 @@ const PatientKiosk = ({ onTriageComplete }) => {
   };
 
   const handleSubmit = async () => {
+    if (!patientId.trim()) {
+      setErrorMsg("Please assign a Patient ID before starting.");
+      return;
+    }
     const finalTranscript = manualText || transcript;
     if (!finalTranscript) return;
     
@@ -341,14 +350,25 @@ const PatientKiosk = ({ onTriageComplete }) => {
 
   return (
     <div className="kiosk-section">
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
         <CustomLanguageSelector 
           language={language}
           setLanguage={setLanguage}
           disabled={step === 'vitals'}
         />
 
-        <div style={{ flex: 1, display: 'flex', position: 'relative' }}>
+        <div style={{ flex: 1, minWidth: '200px', display: 'flex' }}>
+          <input 
+            type="text"
+            placeholder="Assign Patient ID (Mandatory)*"
+            value={patientId}
+            onChange={(e) => setPatientId(e.target.value)}
+            disabled={step === 'vitals'}
+            style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid var(--glass-border)', outline: 'none' }}
+          />
+        </div>
+
+        <div style={{ flex: 1, minWidth: '200px', display: 'flex', position: 'relative' }}>
           <input 
             type="text"
             placeholder="Enter Location/Area"

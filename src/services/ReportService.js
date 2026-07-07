@@ -126,12 +126,40 @@ export const downloadPDF = async (reportType, patientId, reportData) => {
     if (reportData.treatmentPlan) addSection('Unified Treatment Plan', reportData.treatmentPlan);
     addSection('Differentials / Alternatives', reportData.disagreements || 'None noted by the committee.');
   } else if (reportType === 'Triage') {
-    addSection('Primary Symptoms', reportData.summary);
-    addSection('Priority Level', reportData.priority, reportData.priority === 'red' || reportData.priority === 'yellow');
+    addSection('Priority Level', (reportData.priority || 'UNKNOWN').toUpperCase(), reportData.priority === 'red' || reportData.priority === 'yellow');
+    if (reportData.symptoms) addSection('Symptoms Extracted', reportData.symptoms.join(', '));
+    if (reportData.suspectedCondition) addSection('AI Diagnosis (Suspected)', reportData.suspectedCondition);
+    if (reportData.urgencyScore) addSection('AI Risk Confidence', reportData.urgencyScore + '%');
+    if (reportData.aiReasoning) addSection('AI Reasoning', reportData.aiReasoning);
+    if (reportData.department) addSection('Recommended Department', reportData.department);
+    if (reportData.suggestedBedAllocation) addSection('Suggested Bed Allocation', reportData.suggestedBedAllocation);
+    
+    if (reportData.ddxMatrix && reportData.ddxMatrix.length > 0) {
+      const ddxStr = reportData.ddxMatrix.map(dx => `${dx.condition} (${dx.probability}%)`).join('\n');
+      addSection('Differential Diagnosis (DDx) Matrix', ddxStr);
+    }
+    
+    if (reportData.clinicalNotes) addSection('Clinical Notes', reportData.clinicalNotes);
+    if (reportData.possibleCauses) addSection('Possible Causes', reportData.possibleCauses.join(', '));
+    if (reportData.precautionsAndSafety) addSection('Precautions & Safety', reportData.precautionsAndSafety.join(', '));
+    if (reportData.expectedTreatmentPlan) addSection('Expected Treatment Plan', reportData.expectedTreatmentPlan);
+    if (reportData.suggestedMedications && reportData.suggestedMedications.length > 0) addSection('Suggested Medications', reportData.suggestedMedications.join(', '));
+    if (reportData.clinicalCitation) addSection('Clinical Evidence Source', reportData.clinicalCitation);
+
     if (reportData.measuredBpm) addSection('Measured Vitals (BPM)', reportData.measuredBpm);
-    if (reportData.visualPainIndex) addSection('Visual Pain Index', reportData.visualPainIndex + '/100');
-    if (reportData.safetyReview) addSection('AI Safety Alert', reportData.safetyReview, true);
-    if (reportData.allergyAlert) addSection('Pharmacovigilance Alert', reportData.allergyAlert, true);
+    if (reportData.visualPainIndex) addSection('Visual Pain Index', reportData.visualPainIndex + '/10');
+    if (reportData.mentalDistressIndex) addSection('Mental Distress Index', `${reportData.mentalDistressIndex} - ${reportData.sentimentReasoning || ''}`);
+    
+    if (reportData.safetyReview) addSection('AI Safety Review', reportData.safetyReview.safetyNotes, !reportData.safetyReview.isApproved);
+    if (reportData.allergyAlert) addSection('Pharmacovigilance Alert', reportData.allergyAlert.alertMessage, reportData.allergyAlert.hasRisk);
+    if (reportData.billingInfo) addSection('Medical Billing Summary', `ICD-10: ${reportData.billingInfo.icd10Code} | Est. Cost: ${reportData.billingInfo.estimatedCostINR} \n${reportData.billingInfo.billingNotes}`);
+
+    if (reportData.chatHistory && reportData.chatHistory.length > 0) {
+      const chatStr = reportData.chatHistory.map(msg => `${msg.role === 'user' ? 'Patient' : 'AI Doctor'}: ${msg.content}`).join('\n\n');
+      addSection(`Clinical Interaction Log (${reportData.language || 'en'})`, chatStr);
+    } else if (reportData.originalTranscript) {
+      addSection('Clinical Interaction Log', reportData.originalTranscript);
+    }
   }
 
   // Footer
