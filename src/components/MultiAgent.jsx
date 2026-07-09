@@ -142,19 +142,41 @@ const MultiAgent = () => {
               <Users size={20} /> Active AI Board (13 Specialists)
             </h3>
             <ul className="custom-scrollbar" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', overflowY: 'auto', flex: 1, paddingRight: '10px' }}>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><HeartPulse size={16} color="#ff4d4d"/> Cardio</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Brain size={16} color="#a855f7"/> Neuro</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Pill size={16} color="#3b82f6"/> Pharma</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Wind size={16} color="#38bdf8"/> Pulmono</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Stethoscope size={16} color="#f59e0b"/> Gastro</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Droplet size={16} color="#ef4444"/> Hemato</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Smile size={16} color="#ec4899"/> Psych</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Sun size={16} color="#facc15"/> Derma</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Crosshair size={16} color="#dc2626"/> Trauma</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Skull size={16} color="#10b981"/> Toxico</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Activity size={16} color="#10b981"/> Endo</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><Dna size={16} color="#8b5cf6"/> Onco</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e2e8f0', fontSize: '0.9rem' }}><FileBarChart size={16} color="#64748b"/> Patho</li>
+              {[
+                { key: 'cardio', name: 'Cardio', icon: HeartPulse, color: '#ff4d4d' },
+                { key: 'neuro', name: 'Neuro', icon: Brain, color: '#a855f7' },
+                { key: 'pharma', name: 'Pharma', icon: Pill, color: '#3b82f6' },
+                { key: 'pulm', name: 'Pulmono', icon: Wind, color: '#38bdf8' },
+                { key: 'gastro', name: 'Gastro', icon: Stethoscope, color: '#f59e0b' },
+                { key: 'hemato', name: 'Hemato', icon: Droplet, color: '#ef4444' },
+                { key: 'psych', name: 'Psych', icon: Smile, color: '#ec4899' },
+                { key: 'derma', name: 'Derma', icon: Sun, color: '#facc15' },
+                { key: 'trauma', name: 'Trauma', icon: Crosshair, color: '#dc2626' },
+                { key: 'tox', name: 'Toxico', icon: Skull, color: '#10b981' },
+                { key: 'endo', name: 'Endo', icon: Activity, color: '#10b981' },
+                { key: 'onco', name: 'Onco', icon: Dna, color: '#8b5cf6' },
+                { key: 'patho', name: 'Patho', icon: FileBarChart, color: '#64748b' }
+              ].map(agent => {
+                const isActive = debateLog.some(log => log.specialty.toLowerCase().includes(agent.key));
+                const ItemIcon = agent.icon;
+                return (
+                  <li key={agent.key} style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem', 
+                    color: isActive ? '#fff' : '#64748b', 
+                    fontSize: '0.9rem',
+                    background: isActive ? getAgentColor(agent.key) : 'transparent',
+                    padding: isActive ? '6px 10px' : '2px 0',
+                    borderRadius: '8px',
+                    border: isActive ? `1px solid ${getAgentBorder(agent.key)}` : '1px solid transparent',
+                    transition: 'all 0.3s ease',
+                    boxShadow: isActive ? `0 0 10px ${getAgentColor(agent.key)}` : 'none'
+                  }}>
+                    <ItemIcon size={16} color={isActive ? agent.color : '#64748b'} /> {agent.name}
+                  </li>
+                );
+              })}
             </ul>
           </div>
 

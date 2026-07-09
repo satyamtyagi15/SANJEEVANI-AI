@@ -3,6 +3,66 @@ const p1 = "sk-or-v1-";
 const p2 = "e88595895bcfc40899d955708e4fade451e3033ba47ddf423be0685826682c21";
 const apiKey = p1 + p2;
 
+
+const modelsToTry = [
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "google/gemini-2.0-flash-lite-preview-02-05:free",
+  "mistralai/mistral-7b-instruct:free",
+  "openchat/openchat-7b:free"
+];
+
+const callOpenRouterJSON = async (systemPrompt, userPrompt, timeout = 25000) => {
+  let lastError = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    for (const model of modelsToTry) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ]
+          })
+        });
+
+        clearTimeout(timeoutId);
+        const data = await response.json();
+
+        if (!response.ok || !data || !data.choices || !data.choices[0]) {
+           lastError = new Error("Invalid response or rate limit");
+           continue; 
+        }
+
+        let responseText = data.choices[0].message.content;
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            responseText = jsonMatch[0];
+        } else {
+            responseText = responseText.replace(/\`\`\`json/gi, '').replace(/\`\`\`/g, '').trim();
+        }
+
+        return JSON.parse(responseText);
+      } catch (err) {
+        lastError = err;
+        console.warn(`Model ${model} failed`, err);
+      }
+    }
+  }
+  throw lastError || new Error("All AI models failed or rate limited.");
+};
+
+
 export const generateFollowUpQuestion = async (chatHistory, language, pastMedicalHistory = null, visualSymptomContext = null) => {
   try {
     const formattedHistory = chatHistory.map(msg => `${msg.role === 'user' ? 'Patient' : 'AI'}: ${msg.content}`).join('\n');
@@ -36,50 +96,11 @@ export const generateFollowUpQuestion = async (chatHistory, language, pastMedica
       }
     `;
 
-    let attempt = 0;
-    while (attempt < 2) {
-      attempt++;
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          signal: controller.signal,
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: "meta-llama/llama-3.3-70b-instruct:free",
-            messages: [
-              { role: "system", content: "You are a medical JSON AI. Output only valid raw JSON." },
-              { role: "user", content: prompt }
-            ]
-          })
-        });
-
-        const data = await response.json();
-        clearTimeout(timeoutId);
-
-        let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-        const parsed = JSON.parse(responseText);
-
-        // If the AI disobeyed and returned an empty question, throw error to trigger retry
-        if (!parsed.question || parsed.question.trim() === '') {
-          throw new Error("AI returned empty question.");
-        }
-
-        return parsed;
-      } catch (err) {
-        if (attempt >= 2) {
-          throw err;
-        }
-        console.warn(`Attempt ${attempt} failed, retrying AI...`, err);
-      }
+    const parsed = await callOpenRouterJSON("You are a medical JSON AI. Output only valid raw JSON.", prompt, 15000);
+    if (!parsed.question || parsed.question.trim() === '') {
+      throw new Error("AI returned empty question.");
     }
-
+    return parsed;
   } catch (error) {
     console.error("Follow-up AI Error:", error);
     throw new Error("AI engine failed to generate a response. Network timeout or rate limit.");
@@ -154,37 +175,7 @@ export const processTriage = async (chatHistory, language = 'en', pastMedicalHis
       }
     `;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout for triage
-
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
-        max_tokens: 1500,
-        messages: [
-          { role: "system", content: "You are a Medical JSON AI. Output only raw JSON." },
-          { role: "user", content: prompt }
-        ]
-      })
-    });
-
-    const data = await response.json();
-    clearTimeout(timeoutId);
-
-    if (!response.ok) throw new Error(`OpenRouter Error: ${response.status}`);
-
-    let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-    
-    let parsedData;
-    try { parsedData = JSON.parse(responseText); } 
-    catch (e) { throw new Error("Invalid JSON response from AI."); }
+    const parsedData = await callOpenRouterJSON("You are a Medical JSON AI. Output only raw JSON.", prompt, 25000);
 
     return {
       id: Date.now().toString(),
@@ -241,32 +232,7 @@ export const runSafetyReviewAgent = async (triageData) => {
       }
     `;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
-        messages: [
-          { role: "system", content: "You are a medical safety JSON AI. Output only valid raw JSON." },
-          { role: "user", content: prompt }
-        ]
-      })
-    });
-
-    const data = await response.json();
-    clearTimeout(timeoutId);
-
-    let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-    return JSON.parse(responseText);
-
+    return await callOpenRouterJSON("You are a medical safety JSON AI. Output only valid raw JSON.", prompt, 15000);
   } catch (error) {
     console.error("Safety Agent Error:", error);
     return { isApproved: true, safetyNotes: "Safety Agent offline. Proceed with standard caution." };
@@ -291,32 +257,7 @@ export const runBillingAgent = async (triageData) => {
       }
     `;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
-        messages: [
-          { role: "system", content: "You are a Medical Billing JSON AI. Output only valid raw JSON." },
-          { role: "user", content: prompt }
-        ]
-      })
-    });
-
-    const data = await response.json();
-    clearTimeout(timeoutId);
-
-    let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-    return JSON.parse(responseText);
-
+    return await callOpenRouterJSON("You are a Medical Billing JSON AI. Output only valid raw JSON.", prompt, 15000);
   } catch (error) {
     console.error("Billing Agent Error:", error);
     return { icd10Code: "UNKNOWN", estimatedCostINR: "Calculation failed", billingNotes: "Billing Agent offline." };
@@ -343,32 +284,7 @@ export const runPharmacovigilanceAgent = async (triageData, pastMedicalHistory) 
       }
     `;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
-        messages: [
-          { role: "system", content: "You are a Pharmacovigilance JSON AI. Output only valid raw JSON." },
-          { role: "user", content: prompt }
-        ]
-      })
-    });
-
-    const data = await response.json();
-    clearTimeout(timeoutId);
-
-    let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-    return JSON.parse(responseText);
-
+    return await callOpenRouterJSON("You are a Pharmacovigilance JSON AI. Output only valid raw JSON.", prompt, 15000);
   } catch (error) {
     console.error("Pharmacovigilance Agent Error:", error);
     return { hasRisk: false, alertMessage: "Pharmacovigilance Agent offline. Doctor must manually verify allergies." };
@@ -395,26 +311,7 @@ export const generateSOAPNote = async (transcript) => {
       }
     `;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
-        messages: [
-          { role: "system", content: "You are a Medical SOAP Note AI. Output only valid raw JSON." },
-          { role: "user", content: prompt }
-        ]
-      })
-    });
-
-    if (!response.ok) throw new Error("API failed");
-    const data = await response.json();
-    let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-    return JSON.parse(responseText);
+    return await callOpenRouterJSON("You are a Medical SOAP Note AI. Output only valid raw JSON.", prompt, 25000);
   } catch (error) {
     console.error("AutoScribe Error:", error);
     throw new Error("Failed to generate SOAP note.");
@@ -450,36 +347,7 @@ export const checkDrugInteractions = async (drugs, genes) => {
       }
     `;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
-        messages: [
-          { role: "system", content: "You are a Pharmacogenomics AI. Output only valid raw JSON." },
-          { role: "user", content: prompt }
-        ]
-      })
-    });
-
-    if (!response.ok) throw new Error("API failed");
-    const data = await response.json();
-    let responseText = data.choices[0].message.content;
-    
-    // Clean up markdown code blocks if present
-    responseText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
-    
-    // Robustly extract the JSON object in case the LLM added conversational text
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      responseText = jsonMatch[0];
-    }
-    
-    return JSON.parse(responseText);
+    return await callOpenRouterJSON("You are a Pharmacogenomics AI. Output only valid raw JSON.", prompt, 25000);
   } catch (error) {
     console.error("Pharma AI Error:", error);
     throw new Error("Failed to analyze drug interactions.");
@@ -515,40 +383,13 @@ export const runMultiAgentDebate = async (patientCase) => {
       {
         "debate": [
           {"agent": "Dr. [Name]", "specialty": "[Specialty]", "message": "His/Her argument or observation..."},
-          {"agent": "Dr. [Name]", "specialty": "[Specialty]", "message": "Counter-argument or addition..."},
-          ... (at least 6-8 debate turns) ...
+          {"agent": "Dr. [Name]", "specialty": "[Specialty]", "message": "Counter-argument or addition..."}
         ],
         "consensus": "The final agreed-upon clinical diagnosis and strict recommended action plan."
       }
     `;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + apiKey,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free", // 100% FREE auto-router, prevents 429 Too Many Requests errors
-        max_tokens: 2500,
-        messages: [
-          { role: "system", content: "You are a medical JSON AI. Output only valid raw JSON without any markdown code blocks or conversational text." },
-          { role: "user", content: prompt }
-        ]
-      })
-    });
-
-    if (!response.ok) throw new Error("API Error");
-
-    const data = await response.json();
-    let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-    
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) responseText = jsonMatch[0];
-
-    return JSON.parse(responseText);
-
+    return await callOpenRouterJSON("You are a medical JSON AI. Output only valid raw JSON.", prompt, 35000);
   } catch (error) {
     console.error("Multi-Agent Error:", error);
     throw new Error("Failed to run the Multi-Agent debate.");
@@ -585,40 +426,14 @@ export const generateDigitalTwinTrajectory = async (patientData) => {
           "brain": 95
         },
         "trajectory": [
-          {"year": 1, "cardiacRisk": 10, "metabolicRisk": 15, "neuroRisk": 5, "event": "Baseline established."},
-          ... (up to year 10)
+          {"year": 1, "cardiacRisk": 10, "metabolicRisk": 15, "neuroRisk": 5, "event": "Baseline established."}
         ],
         "criticalWarning": "Major predicted event.",
         "preventativeAction": "Specific lifestyle changes."
       }
     `;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + apiKey,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free", // 100% FREE auto-router model
-        messages: [
-          { role: "system", content: "You are a Digital Twin JSON AI. Output only valid raw JSON." },
-          { role: "user", content: prompt }
-        ]
-      })
-    });
-
-    if (!response.ok) throw new Error("API Error");
-
-    const data = await response.json();
-    let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-    
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) responseText = jsonMatch[0];
-
-    return JSON.parse(responseText);
-
+    return await callOpenRouterJSON("You are a Digital Twin JSON AI. Output only valid raw JSON.", prompt, 25000);
   } catch (error) {
     console.error("Digital Twin Error:", error);
     throw new Error("Failed to generate Digital Twin trajectory.");
@@ -651,32 +466,7 @@ export const analyzeGenomicSequence = async (dnaSequence) => {
       }
     `;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + apiKey,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free", // 100% FREE auto-router model
-        messages: [
-          { role: "system", content: "You are a Genomics JSON AI. Output only valid raw JSON." },
-          { role: "user", content: prompt }
-        ]
-      })
-    });
-
-    if (!response.ok) throw new Error("API Error");
-
-    const data = await response.json();
-    let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-    
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) responseText = jsonMatch[0];
-
-    return JSON.parse(responseText);
-
+    return await callOpenRouterJSON("You are a Genomics JSON AI. Output only valid raw JSON.", prompt, 25000);
   } catch (error) {
     console.error("Genomics Error:", error);
     throw new Error("Failed to analyze sequence.");
@@ -704,32 +494,7 @@ export const analyzeArtTherapyEmotion = async (userEmotion) => {
       }
     `;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + apiKey,
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.href : "http://localhost",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free", 
-        messages: [
-          { role: "system", content: "You are an Art Therapy JSON AI. Output only valid raw JSON." },
-          { role: "user", content: prompt }
-        ]
-      })
-    });
-
-    if (!response.ok) throw new Error("API Error");
-
-    const data = await response.json();
-    let responseText = data.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim();
-    
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) responseText = jsonMatch[0];
-
-    return JSON.parse(responseText);
-
+    return await callOpenRouterJSON("You are an Art Therapy JSON AI. Output only valid raw JSON.", prompt, 20000);
   } catch (error) {
     console.error("Art Therapy Error:", error);
     // FALLBACK IF AI REFUSES EXPLICIT CONTENT OR CRASHES
