@@ -127,12 +127,16 @@ export const downloadPDF = async (reportType, patientId, reportData) => {
     addSection('Differentials / Alternatives', reportData.disagreements || 'None noted by the committee.');
   } else if (reportType === 'Triage') {
     addSection('Priority Level', (reportData.priority || 'UNKNOWN').toUpperCase(), reportData.priority === 'red' || reportData.priority === 'yellow');
+    if (reportData.estimatedWaitTime) addSection('Estimated Wait Time', reportData.estimatedWaitTime);
+    if (reportData.department) addSection('Recommended Department', reportData.department);
+    if (reportData.suggestedBedAllocation) addSection('Suggested Bed Allocation', reportData.suggestedBedAllocation);
+
     if (reportData.symptoms) addSection('Symptoms Extracted', reportData.symptoms.join(', '));
+    if (reportData.affectedBodyPart) addSection('Affected Body Part', reportData.affectedBodyPart);
+
     if (reportData.suspectedCondition) addSection('AI Diagnosis (Suspected)', reportData.suspectedCondition);
     if (reportData.urgencyScore) addSection('AI Risk Confidence', reportData.urgencyScore + '%');
     if (reportData.aiReasoning) addSection('AI Reasoning', reportData.aiReasoning);
-    if (reportData.department) addSection('Recommended Department', reportData.department);
-    if (reportData.suggestedBedAllocation) addSection('Suggested Bed Allocation', reportData.suggestedBedAllocation);
     
     if (reportData.ddxMatrix && reportData.ddxMatrix.length > 0) {
       const ddxStr = reportData.ddxMatrix.map(dx => `${dx.condition} (${dx.probability}%)`).join('\n');
@@ -143,13 +147,26 @@ export const downloadPDF = async (reportType, patientId, reportData) => {
     if (reportData.possibleCauses) addSection('Possible Causes', reportData.possibleCauses.join(', '));
     if (reportData.precautionsAndSafety) addSection('Precautions & Safety', reportData.precautionsAndSafety.join(', '));
     if (reportData.expectedTreatmentPlan) addSection('Expected Treatment Plan', reportData.expectedTreatmentPlan);
-    if (reportData.suggestedMedications && reportData.suggestedMedications.length > 0) addSection('Suggested Medications', reportData.suggestedMedications.join(', '));
+    
+    if (reportData.recommendations && reportData.recommendations.length > 0) addSection('Immediate Actions Required', reportData.recommendations.join(', '));
+    if (reportData.suggestedMedications && reportData.suggestedMedications.length > 0) addSection('Suggested Medications / E-Prescription', reportData.suggestedMedications.join(', '));
     if (reportData.clinicalCitation) addSection('Clinical Evidence Source', reportData.clinicalCitation);
 
+    if (reportData.vitalsToCheck && reportData.vitalsToCheck.length > 0) {
+      const vitalsStr = reportData.vitalsToCheck.map(v => typeof v === 'object' ? `${v.name} (${v.reason})` : v).join(', ');
+      addSection('Vitals To Check', vitalsStr);
+    }
     if (reportData.measuredBpm) addSection('Measured Vitals (BPM)', reportData.measuredBpm);
     if (reportData.visualPainIndex) addSection('Visual Pain Index', reportData.visualPainIndex + '/10');
     if (reportData.mentalDistressIndex) addSection('Mental Distress Index', `${reportData.mentalDistressIndex} - ${reportData.sentimentReasoning || ''}`);
     
+    if (reportData.pastMedicalHistory) {
+      if (reportData.pastMedicalHistory.pastDiagnoses?.length > 0) addSection('Previous Diagnoses', reportData.pastMedicalHistory.pastDiagnoses.join(', '));
+      if (reportData.pastMedicalHistory.currentMedications?.length > 0) addSection('Current Medications', reportData.pastMedicalHistory.currentMedications.join(', '));
+      if (reportData.pastMedicalHistory.allergies?.length > 0) addSection('Known Allergies', reportData.pastMedicalHistory.allergies.join(', '), true);
+      if (reportData.pastMedicalHistory.labResults && reportData.pastMedicalHistory.labResults !== 'null') addSection('Lab Results Summary', reportData.pastMedicalHistory.labResults);
+    }
+
     if (reportData.safetyReview) addSection('AI Safety Review', reportData.safetyReview.safetyNotes, !reportData.safetyReview.isApproved);
     if (reportData.allergyAlert) addSection('Pharmacovigilance Alert', reportData.allergyAlert.alertMessage, reportData.allergyAlert.hasRisk);
     if (reportData.billingInfo) addSection('Medical Billing Summary', `ICD-10: ${reportData.billingInfo.icd10Code} | Est. Cost: ${reportData.billingInfo.estimatedCostINR} \n${reportData.billingInfo.billingNotes}`);

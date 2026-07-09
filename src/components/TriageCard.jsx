@@ -3,10 +3,8 @@ import { Activity, AlertTriangle, CheckCircle, Clock, HeartPulse, Stethoscope, H
 import { QRCodeCanvas } from 'qrcode.react';
 import PharmacyPrescriptionWidget from './PharmacyPrescriptionWidget';
 import AnatomicalHeatmap from './AnatomicalHeatmap';
-import { saveReportToDB } from '../services/ReportService';
+import { saveReportToDB, downloadPDF } from '../services/ReportService';
 import { showAlert } from '../services/AlertService';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 
 const parseWaitTimeToSeconds = (str) => {
   const match = str.match(/(\d+)/);
@@ -33,7 +31,8 @@ const TriageCard = ({ data }) => {
   const handleSaveReport = async () => {
     setIsSaving(true);
     try {
-      await saveReportToDB('Triage', data.patientId, data);
+      const payload = { ...data, estimatedWaitTime: waitTime };
+      await saveReportToDB('Triage', data.patientId, payload);
       showAlert('Triage Record saved to database successfully!', 'success');
     } catch (err) {
       showAlert('Failed to save report: ' + err.message, 'error');
@@ -46,21 +45,11 @@ const TriageCard = ({ data }) => {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
-    if (!reportRef.current) return;
     setIsDownloading(true);
     try {
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#0f172a'
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Sanjeevani_Triage_${data.patientId}.pdf`);
+      const payload = { ...data, estimatedWaitTime: waitTime };
+      await downloadPDF('Triage', data.patientId, payload);
+      showAlert("PDF downloaded successfully!", "success");
     } catch (err) {
       console.error("PDF generation failed:", err);
       showAlert("Failed to generate PDF.", "error");
