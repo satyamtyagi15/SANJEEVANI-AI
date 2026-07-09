@@ -5,10 +5,11 @@ const apiKey = p1 + p2;
 
 
 const modelsToTry = [
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "google/gemini-2.0-flash-lite-preview-02-05:free",
-  "mistralai/mistral-7b-instruct:free",
-  "openchat/openchat-7b:free"
+  "google/gemma-4-31b-it:free",
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+  "tencent/hy3:free",
+  "cohere/north-mini-code:free",
+  "nvidia/nemotron-3-super-120b-a12b:free"
 ];
 
 const callOpenRouterJSON = async (systemPrompt, userPrompt, timeout = 25000) => {
