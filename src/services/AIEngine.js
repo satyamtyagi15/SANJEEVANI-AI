@@ -5,16 +5,16 @@ const apiKey = p1 + p2;
 
 
 const modelsToTry = [
-  "google/gemma-4-31b-it:free",
-  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-  "tencent/hy3:free",
   "cohere/north-mini-code:free",
+  "poolside/laguna-xs-2.1:free",
+  "tencent/hy3:free",
+  "google/gemma-4-31b-it:free",
   "nvidia/nemotron-3-super-120b-a12b:free"
 ];
 
 const callOpenRouterJSON = async (systemPrompt, userPrompt, timeout = 25000) => {
   let lastError = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 1; attempt++) {
     for (const model of modelsToTry) {
       try {
         const controller = new AbortController();
