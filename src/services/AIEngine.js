@@ -507,5 +507,34 @@ export const analyzeArtTherapyEmotion = async (userEmotion) => {
   }
 };
 
+export const evaluateRelapseRisk = async (dischargeNotes, newSymptoms, patientDiagnosis) => {
+  try {
+    const prompt = `
+      You are an expert Autonomous Readmission Prevention Guardian (AI).
+      Your job is to monitor a recently discharged patient and analyze their new symptoms against their original discharge notes.
+      
+      Original Diagnosis: ${patientDiagnosis}
+      Discharge Notes (RAG Context): "${dischargeNotes}"
+      Patient's Current New Symptoms: "${newSymptoms}"
+      
+      Compare the new symptoms with the context. Is this a normal expected recovery symptom, or a sign of a critical relapse/complication that requires immediate readmission?
+      
+      Respond STRICTLY in the following JSON format ONLY without conversational text:
+      {
+        "isCritical": true/false,
+        "aiRiskAssessment": "A 2-sentence clinical explanation of why this symptom is or isn't a relapse of their original condition.",
+        "recommendedAction": "e.g., 'Return to ER immediately' or 'Rest and take prescribed painkillers'"
+      }
+    `;
 
+    return await callOpenRouterJSON("You are a Guardian AI. Output only valid raw JSON.", prompt, 15000);
+  } catch (error) {
+    console.error("Guardian AI Error:", error);
+    return {
+      isCritical: true,
+      aiRiskAssessment: "AI Network Timeout. Defaulting to critical alert for safety.",
+      recommendedAction: "Please contact the doctor manually."
+    };
+  }
+};
 

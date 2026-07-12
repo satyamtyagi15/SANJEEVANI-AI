@@ -1,5 +1,6 @@
 import React from 'react';
 import TriageCard from './TriageCard';
+import GuardianAlerts from './GuardianAlerts';
 import { Stethoscope } from 'lucide-react';
 
 const DoctorDashboard = ({ triageQueue }) => {
@@ -9,6 +10,8 @@ const DoctorDashboard = ({ triageQueue }) => {
         <h2>Doctor Dashboard</h2>
         <p>Live Triage Queue</p>
       </div>
+      
+      <GuardianAlerts />
 
       <div className="dashboard-content">
         {triageQueue.length === 0 ? (

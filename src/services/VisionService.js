@@ -37,7 +37,7 @@ export const scanMedicalRecord = async (base64Image) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "nvidia/nemotron-nano-12b-v2-vl:free", // 100% FREE lightning fast multimodal model
+        model: "google/gemini-2.0-flash-lite-preview-02-05:free", // Highly reliable free multimodal model
         max_tokens: 800,
         messages: [
           {
@@ -110,7 +110,7 @@ export const scanRadiologyImage = async (base64Image) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "nvidia/nemotron-nano-12b-v2-vl:free", // 100% FREE lightning fast multimodal model
+        model: "google/gemini-2.0-flash-lite-preview-02-05:free", // Highly reliable free multimodal model
         max_tokens: 800,
         messages: [
           {

@@ -516,7 +516,7 @@ const PatientKiosk = ({ onTriageComplete }) => {
         <>
           <div className="section-header">
             <h2>Sanjeevani Kiosk</h2>
-            <p>AI Triage Assistant</p>
+            <p>Multi-Agent AI Healthcare System</p>
           </div>
 
           <div className="kiosk-content">

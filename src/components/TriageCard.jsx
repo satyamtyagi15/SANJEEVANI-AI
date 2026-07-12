@@ -5,6 +5,8 @@ import PharmacyPrescriptionWidget from './PharmacyPrescriptionWidget';
 import AnatomicalHeatmap from './AnatomicalHeatmap';
 import { saveReportToDB, downloadPDF } from '../services/ReportService';
 import { showAlert } from '../services/AlertService';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 
 const parseWaitTimeToSeconds = (str) => {
   const match = str.match(/(\d+)/);
@@ -27,7 +29,38 @@ const TriageCard = ({ data }) => {
   const [isTimeOver, setIsTimeOver] = useState(false);
   const [showQrExpanded, setShowQrExpanded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDischarging, setIsDischarging] = useState(false);
 
+  // Safely grab the convex mutation if available
+  let dischargePatient = () => {};
+  try {
+    const mut = useMutation(api.patients.dischargePatient);
+    if (mut) dischargePatient = mut;
+  } catch (e) {
+    console.warn("Convex not initialized for discharge mutation.");
+  }
+
+  const handleDischarge = async () => {
+    setIsDischarging(true);
+    try {
+      const link = await dischargePatient({
+        patientId: data.patientId,
+        diagnosis: data.suspectedCondition,
+        medications: data.suggestedMedications || [],
+        dischargeNotes: data.clinicalNotes || "Standard discharge.",
+        riskLevel: data.priority,
+      });
+      if (link) {
+        showAlert(`Discharged to Guardian AI. Follow-up link: ${link}`, 'success');
+      } else {
+        showAlert("Convex is not running yet. Run npx convex dev to test this.", "error");
+      }
+    } catch (err) {
+      showAlert('Failed to discharge: ' + err.message, 'error');
+    } finally {
+      setIsDischarging(false);
+    }
+  };
   const handleSaveReport = async () => {
     setIsSaving(true);
     try {
@@ -446,7 +479,7 @@ const TriageCard = ({ data }) => {
           )}
         </div>
 
-        {/* Save & Download Actions */}
+        {/* Save & Download & Discharge Actions */}
         <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
           <button 
             onClick={handleSaveReport}
@@ -456,6 +489,16 @@ const TriageCard = ({ data }) => {
             {isSaving ? <Activity size={18} className="spin" /> : <Save size={18} />}
             {isSaving ? 'Saving...' : 'Save Triage Record'}
           </button>
+          
+          <button 
+            onClick={handleDischarge}
+            disabled={isDischarging}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: '1px solid #ef4444', background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', fontWeight: 'bold', cursor: isDischarging ? 'not-allowed' : 'pointer' }}
+          >
+            {isDischarging ? <Activity size={18} className="spin" /> : <ShieldAlert size={18} />}
+            {isDischarging ? 'Discharging...' : 'Discharge to Guardian AI'}
+          </button>
+
           <button 
             onClick={handleDownload}
             disabled={isDownloading}

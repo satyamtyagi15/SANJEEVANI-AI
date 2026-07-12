@@ -17,6 +17,7 @@
     "@tensorflow-models/face-detection": "^1.0.3",
     "@tensorflow-models/face-landmarks-detection": "^1.0.6",
     "@tensorflow/tfjs": "^4.22.0",
+    "convex": "^1.42.1",
     "framer-motion": "^12.40.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
