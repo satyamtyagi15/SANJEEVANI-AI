@@ -91,3 +91,25 @@ export const getAllGuardianAlerts = query({
       .collect();
   },
 });
+
+// Delete a discharged patient and their alerts
+export const deleteDischargedPatient = mutation({
+  args: { patientDocId: v.id("dischargedPatients") },
+  handler: async (ctx, args) => {
+    const patient = await ctx.db.get(args.patientDocId);
+    if (!patient) return;
+    
+    // Delete all associated alerts
+    const alerts = await ctx.db
+      .query("guardianAlerts")
+      .filter((q) => q.eq(q.field("patientId"), patient.patientId))
+      .collect();
+      
+    for (const alert of alerts) {
+      await ctx.db.delete(alert._id);
+    }
+    
+    // Delete the patient record
+    await ctx.db.delete(args.patientDocId);
+  },
+});

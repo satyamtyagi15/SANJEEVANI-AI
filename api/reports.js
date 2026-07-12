@@ -55,6 +55,13 @@ export default async function handler(req, res) {
       return res.status(200).json(reports);
     }
 
+    if (req.method === 'DELETE') {
+      const { id } = req.query; // pass id in query string ?id=XXX
+      if (!id) return res.status(400).json({ error: 'Report ID required' });
+      await Report.findByIdAndDelete(id);
+      return res.status(200).json({ success: true });
+    }
+
     // Method not allowed
     return res.status(405).json({ error: 'Method Not Allowed' });
   } catch (error) {

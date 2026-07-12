@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { ShieldCheck, AlertTriangle, Activity, CheckCircle, Clock, User, Phone, Mail } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Activity, CheckCircle, Clock, User, Phone, Mail, Trash2 } from 'lucide-react';
 
 const GuardianDashboard = () => {
   const patients = useQuery(api.patients.getAllDischargedPatients) || [];
   const alerts = useQuery(api.patients.getAllGuardianAlerts) || [];
   const resolveAlert = useMutation(api.patients.markAlertResolved);
+  const deletePatient = useMutation(api.patients.deleteDischargedPatient);
 
   const [filter, setFilter] = useState('all'); // all, critical, pending
 
@@ -93,9 +94,32 @@ const GuardianDashboard = () => {
                   </h3>
                   <p style={{ margin: '0.2rem 0 0 0', color: '#a1a1aa', fontSize: '0.9rem' }}>Discharged: {new Date(patient.timestamp).toLocaleDateString()}</p>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  {patient.contactPhone && <Phone size={16} color="#71717a" title={patient.contactPhone} />}
-                  {patient.contactEmail && <Mail size={16} color="#71717a" title={patient.contactEmail} />}
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  {patient.contactPhone && (
+                    <a href={`https://wa.me/${patient.contactPhone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" style={{ color: '#10b981', cursor: 'pointer' }}>
+                      <Phone size={18} title={`WhatsApp: ${patient.contactPhone}`} />
+                    </a>
+                  )}
+                  {patient.contactEmail && (
+                    <a href={`mailto:${patient.contactEmail}`} style={{ color: '#3b82f6', cursor: 'pointer' }}>
+                      <Mail size={18} title={`Email: ${patient.contactEmail}`} />
+                    </a>
+                  )}
+                  <button 
+                    onClick={async () => {
+                      if(window.confirm(`Delete patient ${patient.patientId} from Guardian Monitor?`)) {
+                        try {
+                          await deletePatient({ patientDocId: patient._id });
+                        } catch(e) {
+                          console.error("Failed to delete", e);
+                        }
+                      }
+                    }}
+                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', opacity: 0.7, padding: 0 }}
+                    title="Delete Patient Record"
+                  >
+                    <Trash2 size={18} />
+                  </button>
                 </div>
               </div>
 
@@ -143,15 +167,15 @@ const GuardianDashboard = () => {
                       <strong style={{ color: '#a1a1aa' }}>Patient reports:</strong> "{patient.latestAlert.reportedSymptoms}"
                     </div>
                     
-                    <div style={{ color: '#93c5fd', fontSize: '0.85rem', marginBottom: patient.latestAlert.isCritical && !patient.latestAlert.isRead ? '1rem' : 0 }}>
+                    <div style={{ color: '#93c5fd', fontSize: '0.85rem', marginBottom: !patient.latestAlert.isRead ? '1rem' : 0 }}>
                       <Activity size={14} style={{ display: 'inline', marginRight: '4px' }}/> 
                       {patient.latestAlert.aiRiskAssessment}
                     </div>
 
-                    {patient.latestAlert.isCritical && !patient.latestAlert.isRead && (
+                    {!patient.latestAlert.isRead && (
                       <button 
                         onClick={() => handleResolve(patient.latestAlert._id)}
-                        style={{ width: '100%', padding: '0.5rem', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                        style={{ width: '100%', padding: '0.5rem', background: patient.latestAlert.isCritical ? '#ef4444' : '#10b981', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
                       >
                         Acknowledge & Resolve
                       </button>
