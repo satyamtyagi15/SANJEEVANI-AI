@@ -1,44 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Database, FolderOpen, Trash2, Activity, Calendar } from 'lucide-react';
 import TriageCard from './TriageCard';
 import { showAlert } from '../services/AlertService';
-
-// Use relative URL so it works in production on Vercel
-const API_URL = '/api';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 
 const PatientRecords = () => {
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const reports = useQuery(api.records.getAllRecords);
+  const deleteRecord = useMutation(api.records.deleteRecord);
+  
   const [expandedId, setExpandedId] = useState(null);
-
-  const fetchReports = async () => {
-    try {
-      const res = await fetch(`${API_URL}/reports`);
-      if (!res.ok) throw new Error('Failed to fetch reports');
-      const data = await res.json();
-      setReports(data);
-    } catch (err) {
-      console.error(err);
-      showAlert('Failed to load Patient Records from Database.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchReports();
-  }, []);
 
   const handleDelete = async (e, id) => {
     e.stopPropagation(); // prevent expanding
-    if (!window.confirm('Are you sure you want to permanently delete this report from the database?')) return;
+    if (!window.confirm('Are you sure you want to permanently delete this report from Patient Records?')) return;
     
     try {
-      const res = await fetch(`${API_URL}/reports?id=${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Delete failed');
-      
+      await deleteRecord({ recordId: id });
       showAlert('Report deleted successfully.', 'success');
-      setReports(reports.filter(r => r._id !== id));
       if (expandedId === id) setExpandedId(null);
     } catch (err) {
       console.error(err);
@@ -50,6 +29,8 @@ const PatientRecords = () => {
     setExpandedId(expandedId === id ? null : id);
   };
 
+  const isLoading = reports === undefined;
+
   return (
     <div className="dashboard-section" style={{ padding: '2rem', height: '100%', overflowY: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', borderBottom: '1px solid rgba(59, 130, 246, 0.2)', paddingBottom: '1rem' }}>
@@ -59,15 +40,9 @@ const PatientRecords = () => {
           </h1>
           <p style={{ color: '#a1a1aa', marginTop: '0.5rem' }}>Permanent storage of all saved ER Triage and AI reports.</p>
         </div>
-        <button 
-          onClick={() => { setLoading(true); fetchReports(); }}
-          style={{ padding: '0.5rem 1rem', background: 'transparent', border: '1px solid #3b82f6', color: '#93c5fd', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <Activity size={16} className={loading ? "spin" : ""} /> Refresh
-        </button>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div style={{ textAlign: 'center', padding: '3rem', color: '#71717a' }}>
           <Activity size={48} className="spin" style={{ marginBottom: '1rem', opacity: 0.5 }} />
           <p>Connecting to secure database...</p>
@@ -75,7 +50,7 @@ const PatientRecords = () => {
       ) : reports.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '3rem', color: '#71717a' }}>
           <FolderOpen size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-          <p>No records found in the database. Save a report to see it here.</p>
+          <p>No records found in the database. Save a report from ER Triage to see it here.</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -100,7 +75,7 @@ const PatientRecords = () => {
                   <div>
                     <span style={{ fontSize: '0.7rem', color: '#71717a', textTransform: 'uppercase', letterSpacing: '1px', display: 'block' }}>Saved On</span>
                     <span style={{ color: '#a1a1aa', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.9rem' }}>
-                      <Calendar size={14} /> {new Date(report.createdAt || Date.now()).toLocaleString()}
+                      <Calendar size={14} /> {new Date(report.savedAt).toLocaleString()}
                     </span>
                   </div>
                 </div>

@@ -96,12 +96,32 @@ const TriageCard = ({ data }) => {
     }
   };
 
+  let saveRecordToConvex = () => {};
+  try {
+    const mutSave = useMutation(api.records.saveRecord);
+    if (mutSave) saveRecordToConvex = mutSave;
+  } catch (e) {}
+
   const handleSaveReport = async () => {
     setIsSaving(true);
     try {
       const payload = { ...data, estimatedWaitTime: waitTime };
-      await saveReportToDB('Triage', data.patientId, payload);
-      showAlert('Triage Record saved to database successfully!', 'success');
+      
+      // Save to MongoDB
+      try {
+        await saveReportToDB('Triage', data.patientId, payload);
+      } catch (e) {
+        console.warn("MongoDB save failed", e);
+      }
+      
+      // Save to Convex for Patient Records Dashboard
+      await saveRecordToConvex({
+        patientId: data.patientId,
+        type: 'Triage',
+        data: payload
+      });
+
+      showAlert('Triage Record saved to Patient Records successfully!', 'success');
     } catch (err) {
       showAlert('Failed to save report: ' + err.message, 'error');
     } finally {

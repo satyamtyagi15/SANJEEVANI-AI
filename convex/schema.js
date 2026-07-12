@@ -22,4 +22,11 @@ export default defineSchema({
     timestamp: v.string(),
     isRead: v.boolean(),
   }).index("by_read_status", ["isRead"]),
+
+  savedRecords: defineTable({
+    patientId: v.string(),
+    type: v.string(),
+    data: v.any(), // Store the entire JSON report payload
+    savedAt: v.number(),
+  }).index("by_patientId", ["patientId"]),
 });
