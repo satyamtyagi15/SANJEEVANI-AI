@@ -9,22 +9,20 @@ const PatientFollowUp = ({ patientId, onClose }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState(null);
 
-  // Safe fallback if Convex is offline
-  let dischargeInfo = null;
-  let logAlert = () => {};
-  try {
-    const info = useQuery(api.patients.getPatientDischargeInfo, { patientId });
-    if (info) dischargeInfo = info;
-    const mut = useMutation(api.patients.logGuardianAlert);
-    if (mut) logAlert = mut;
-  } catch (e) {
-    console.warn("Convex is offline for FollowUp.");
-  }
+  // Always call hooks at the top level
+  const info = useQuery(api.patients.getPatientDischargeInfo, { patientId });
+  const logAlertMut = useMutation(api.patients.logGuardianAlert);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!dischargeInfo) {
-      alert("Discharge records not found or Convex is offline!");
+    
+    if (info === undefined) {
+      alert("Still connecting to Sanjeevani AI Cloud, please wait a moment...");
+      return;
+    }
+    
+    if (info === null) {
+      alert(`Error: No discharge records found for patient ID ${patientId}. Please check the link.`);
       return;
     }
 
@@ -32,13 +30,13 @@ const PatientFollowUp = ({ patientId, onClose }) => {
     try {
       // Run the RAG AI Agent
       const aiAnalysis = await evaluateRelapseRisk(
-        dischargeInfo.dischargeNotes, 
+        info.dischargeNotes, 
         symptom, 
-        dischargeInfo.diagnosis
+        info.diagnosis
       );
 
       // Log alert to Doctor Dashboard via Convex
-      await logAlert({
+      await logAlertMut({
         patientId,
         reportedSymptoms: symptom,
         aiRiskAssessment: aiAnalysis.aiRiskAssessment,
