@@ -74,7 +74,7 @@ const TriageCard = ({ data }) => {
         // In a real deployed app, window.location.origin is used. 
         // We use Vercel URL as fallback if testing locally but sending to a remote patient.
         const origin = window.location.origin.includes('localhost') ? 'https://sanjeevani-psi.vercel.app' : window.location.origin;
-        const magicLink = `${origin}/?followup=${data.patientId}`;
+        const magicLink = `${origin}/?followup=${encodeURIComponent(data.patientId)}`;
         const message = `Hello, this is Sanjeevani AI Hospital. You have been placed under our Autonomous Guardian AI. Please click this link in 24 hours to report your symptoms, or immediately if you feel worse: ${magicLink}`;
 
         if (contactPhone) {

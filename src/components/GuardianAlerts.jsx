@@ -4,20 +4,13 @@ import { api } from "../../convex/_generated/api";
 import { ShieldAlert, CheckCircle, AlertTriangle } from 'lucide-react';
 
 const GuardianAlerts = () => {
-  // Safe fallback if Convex is not properly configured yet
-  let activeAlerts = [];
-  let markResolved = () => {};
+  const alerts = useQuery(api.patients.getActiveAlerts);
+  const resolveMutation = useMutation(api.patients.markAlertResolved);
 
-  try {
-    const alerts = useQuery(api.patients.getActiveAlerts);
-    const resolveMutation = useMutation(api.patients.markAlertResolved);
-    if (alerts) activeAlerts = alerts;
-    if (resolveMutation) markResolved = resolveMutation;
-  } catch (e) {
-    console.warn("Convex is not initialized yet. Skipping Guardian Alerts real-time query.");
-  }
+  const activeAlerts = alerts || [];
+  const markResolved = resolveMutation;
 
-  if (!activeAlerts || activeAlerts.length === 0) return null;
+  if (activeAlerts.length === 0) return null;
 
   return (
     <div style={{ marginBottom: '2rem', padding: '1.5rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '12px' }}>
