@@ -57,7 +57,7 @@ function App() {
         
         <ul className="nav-menu">
           <li className={activeModule === 'triage' ? 'active' : ''} onClick={() => setActiveModule('triage')}>
-            <Stethoscope size={20} /> <span>Multi-Agent System</span>
+            <Stethoscope size={20} /> <span>AI ER Triage</span>
           </li>
           <li className={activeModule === 'guardian' ? 'active' : ''} onClick={() => setActiveModule('guardian')}>
             <ShieldCheck size={20} /> <span>Guardian Monitor</span>
