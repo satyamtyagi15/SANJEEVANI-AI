@@ -22,6 +22,17 @@ function App() {
   const [followUpPatientId, setFollowUpPatientId] = useState(null);
   const [outbreakData, setOutbreakData] = useState(null);
 
+  // Check URL for magic links
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const followupId = params.get('followup');
+    if (followupId) {
+      setFollowUpPatientId(followupId);
+      // Clean URL without reloading
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   const handleTriageComplete = (newTriageData) => {
     setTriageQueue((prevQueue) => {
       if (prevQueue.some(item => item.id === newTriageData.id)) return prevQueue;

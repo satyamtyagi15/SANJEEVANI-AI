@@ -9,6 +9,8 @@ export const dischargePatient = mutation({
     medications: v.array(v.string()),
     dischargeNotes: v.string(),
     riskLevel: v.string(),
+    contactPhone: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Generate a mock unique link for the patient's SMS

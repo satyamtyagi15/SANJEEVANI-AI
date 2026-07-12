@@ -40,7 +40,20 @@ const TriageCard = ({ data }) => {
     console.warn("Convex not initialized for discharge mutation.");
   }
 
-  const handleDischarge = async () => {
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+
+  const handleDischargeInit = () => {
+    setShowContactModal(true);
+  };
+
+  const executeDischargeAndDispatch = async () => {
+    if (!contactPhone && !contactEmail) {
+      showAlert("Please provide at least a WhatsApp Number or Email.", "error");
+      return;
+    }
+    
     setIsDischarging(true);
     try {
       const link = await dischargePatient({
@@ -49,11 +62,32 @@ const TriageCard = ({ data }) => {
         medications: data.suggestedMedications || [],
         dischargeNotes: data.clinicalNotes || "Standard discharge.",
         riskLevel: data.priority,
+        contactPhone: contactPhone || undefined,
+        contactEmail: contactEmail || undefined,
       });
+
       if (link) {
-        showAlert(`Discharged to Guardian AI. Follow-up link: ${link}`, 'success');
+        setShowContactModal(false);
+        showAlert(`Discharged successfully. Dispatching alert...`, 'success');
+        
+        // 100% Free Dispatcher Logic
+        // In a real deployed app, window.location.origin is used. 
+        // We use Vercel URL as fallback if testing locally but sending to a remote patient.
+        const origin = window.location.origin.includes('localhost') ? 'https://sanjeevani-psi.vercel.app' : window.location.origin;
+        const magicLink = `${origin}/?followup=${data.patientId}`;
+        const message = `Hello, this is Sanjeevani AI Hospital. You have been placed under our Autonomous Guardian AI. Please click this link in 24 hours to report your symptoms, or immediately if you feel worse: ${magicLink}`;
+
+        if (contactPhone) {
+          // Format phone (remove spaces/pluses for wa.me)
+          const cleanPhone = contactPhone.replace(/\D/g, '');
+          const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+          window.open(waUrl, '_blank');
+        } else if (contactEmail) {
+          const mailUrl = `mailto:${contactEmail}?subject=Sanjeevani AI Guardian Follow-Up&body=${encodeURIComponent(message)}`;
+          window.open(mailUrl, '_self');
+        }
       } else {
-        showAlert("Convex is not running yet. Run npx convex dev to test this.", "error");
+        showAlert("Convex is not running yet. Run npx convex dev.", "error");
       }
     } catch (err) {
       showAlert('Failed to discharge: ' + err.message, 'error');
@@ -61,6 +95,7 @@ const TriageCard = ({ data }) => {
       setIsDischarging(false);
     }
   };
+
   const handleSaveReport = async () => {
     setIsSaving(true);
     try {
@@ -491,7 +526,7 @@ const TriageCard = ({ data }) => {
           </button>
           
           <button 
-            onClick={handleDischarge}
+            onClick={handleDischargeInit}
             disabled={isDischarging}
             style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: '1px solid #ef4444', background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', fontWeight: 'bold', cursor: isDischarging ? 'not-allowed' : 'pointer' }}
           >
@@ -510,6 +545,56 @@ const TriageCard = ({ data }) => {
         </div>
       </div>
     </div>
+
+    {/* Contact Capture Modal for Guardian Dispatch */}
+    {showContactModal && (
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(5px)' }}>
+        <div style={{ background: '#18181b', padding: '2rem', borderRadius: '16px', width: '90%', maxWidth: '400px', border: '1px solid #3f3f46', position: 'relative' }}>
+          <button onClick={() => setShowContactModal(false)} style={{ position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer' }}><X size={20} /></button>
+          
+          <h3 style={{ color: '#fff', marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ShieldAlert color="#ef4444" /> Omni-Channel Guardian
+          </h3>
+          <p style={{ color: '#a1a1aa', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+            Enter the patient's WhatsApp number or Email. The AI will send them a magic link to track their recovery.
+          </p>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div>
+              <label style={{ color: '#e4e4e7', fontSize: '0.8rem', marginBottom: '0.3rem', display: 'block' }}>WhatsApp Number (with country code)</label>
+              <input 
+                type="text" 
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                placeholder="+919876543210"
+                style={{ width: '100%', padding: '0.8rem', background: 'rgba(0,0,0,0.5)', border: '1px solid #52525b', borderRadius: '8px', color: '#fff', outline: 'none' }}
+              />
+            </div>
+            
+            <div style={{ textAlign: 'center', color: '#71717a', fontSize: '0.8rem' }}>OR</div>
+            
+            <div>
+              <label style={{ color: '#e4e4e7', fontSize: '0.8rem', marginBottom: '0.3rem', display: 'block' }}>Email Address</label>
+              <input 
+                type="email" 
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="patient@example.com"
+                style={{ width: '100%', padding: '0.8rem', background: 'rgba(0,0,0,0.5)', border: '1px solid #52525b', borderRadius: '8px', color: '#fff', outline: 'none' }}
+              />
+            </div>
+            
+            <button 
+              onClick={executeDischargeAndDispatch}
+              disabled={isDischarging}
+              style={{ width: '100%', padding: '1rem', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: isDischarging ? 'not-allowed' : 'pointer', marginTop: '0.5rem' }}
+            >
+              {isDischarging ? "Dispatching..." : "Confirm & Send Link"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 };

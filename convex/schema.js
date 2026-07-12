@@ -8,6 +8,8 @@ export default defineSchema({
     medications: v.array(v.string()),
     dischargeNotes: v.string(),
     riskLevel: v.string(),
+    contactPhone: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
     contactLink: v.string(), // simulated link for follow-up
     timestamp: v.string(),
   }).index("by_patientId", ["patientId"]),
