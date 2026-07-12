@@ -71,3 +71,23 @@ export const markAlertResolved = mutation({
     await ctx.db.patch(args.alertId, { isRead: true });
   },
 });
+
+// Fetch all discharged patients (for Guardian Monitor Dashboard)
+export const getAllDischargedPatients = query({
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("dischargedPatients")
+      .order("desc")
+      .collect();
+  },
+});
+
+// Fetch all guardian alerts (for Guardian Monitor Dashboard)
+export const getAllGuardianAlerts = query({
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("guardianAlerts")
+      .order("desc")
+      .collect();
+  },
+});

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Stethoscope, Mic, Pill, ScanEye, Users, Activity, Dna, Palette, Camera } from 'lucide-react';
+import { Stethoscope, Mic, Pill, ScanEye, Users, Activity, Dna, Palette, Camera, ShieldCheck } from 'lucide-react';
 import PatientKiosk from './components/PatientKiosk';
 import DoctorDashboard from './components/DoctorDashboard';
 import EpidemicAlert from './components/EpidemicAlert';
@@ -13,6 +13,7 @@ import ArtTherapy from './components/ArtTherapy';
 import PainTracker from './components/PainTracker';
 import CustomAlert from './components/CustomAlert';
 import PatientFollowUp from './components/PatientFollowUp';
+import GuardianDashboard from './components/GuardianDashboard';
 import { epidemicService } from './services/EpidemicService';
 import './styles/App.css';
 
@@ -56,6 +57,9 @@ function App() {
         <ul className="nav-menu">
           <li className={activeModule === 'triage' ? 'active' : ''} onClick={() => setActiveModule('triage')}>
             <Stethoscope size={20} /> <span>Multi-Agent System</span>
+          </li>
+          <li className={activeModule === 'guardian' ? 'active' : ''} onClick={() => setActiveModule('guardian')}>
+            <ShieldCheck size={20} /> <span>Guardian Monitor</span>
           </li>
           <li className={activeModule === 'scribe' ? 'active' : ''} onClick={() => setActiveModule('scribe')}>
             <Mic size={20} /> <span>Auto-Scribe</span>
@@ -109,6 +113,7 @@ function App() {
           </div>
         )}
         
+        {activeModule === 'guardian' && <GuardianDashboard />}
         {activeModule === 'scribe' && <AutoScribe />}
         {activeModule === 'pharma' && <PharmaAI />}
         {activeModule === 'vision' && <VisionAI />}
