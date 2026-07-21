@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Stethoscope, Mic, Pill, ScanEye, Users, Activity, Dna, Palette, Camera, ShieldCheck, Database } from 'lucide-react';
+import { Stethoscope, Mic, Pill, ScanEye, Users, Activity, Dna, Palette, Camera, ShieldCheck, Database, Menu, X } from 'lucide-react';
 import PatientKiosk from './components/PatientKiosk';
 import DoctorDashboard from './components/DoctorDashboard';
 import EpidemicAlert from './components/EpidemicAlert';
@@ -23,6 +23,7 @@ function App() {
   const [triageQueue, setTriageQueue] = useState([]);
   const [followUpPatientId, setFollowUpPatientId] = useState(null);
   const [outbreakData, setOutbreakData] = useState(null);
+  const [isNavOpen, setIsNavOpen] = useState(false);
 
   // Check URL for magic links
   React.useEffect(() => {
@@ -46,9 +47,20 @@ function App() {
 
   return (
     <div className="super-app-layout">
+      {/* Mobile Nav Toggle Header */}
+      <div className="mobile-nav-header">
+        <div className="mobile-logo">
+          <h1>SANJEEVANI</h1>
+        </div>
+        <button className="mobile-menu-btn" onClick={() => setIsNavOpen(!isNavOpen)}>
+          {isNavOpen ? <X size={28} /> : <Menu size={28} />}
+        </button>
+      </div>
+
       <CustomAlert />
+      
       {/* Sci-Fi Sidebar Navigation */}
-      <nav className="sci-fi-sidebar">
+      <nav className={`sci-fi-sidebar ${isNavOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
           <div className="logo-pulse"></div>
           <h1>SANJEEVANI</h1>
@@ -56,37 +68,37 @@ function App() {
         </div>
         
         <ul className="nav-menu">
-          <li className={activeModule === 'triage' ? 'active' : ''} onClick={() => setActiveModule('triage')}>
+          <li className={activeModule === 'triage' ? 'active' : ''} onClick={() => { setActiveModule('triage'); setIsNavOpen(false); }}>
             <Stethoscope size={20} /> <span>AI ER Triage</span>
           </li>
-          <li className={activeModule === 'guardian' ? 'active' : ''} onClick={() => setActiveModule('guardian')}>
+          <li className={activeModule === 'guardian' ? 'active' : ''} onClick={() => { setActiveModule('guardian'); setIsNavOpen(false); }}>
             <ShieldCheck size={20} /> <span>Guardian Monitor</span>
           </li>
-          <li className={activeModule === 'records' ? 'active' : ''} onClick={() => setActiveModule('records')}>
+          <li className={activeModule === 'records' ? 'active' : ''} onClick={() => { setActiveModule('records'); setIsNavOpen(false); }}>
             <Database size={20} /> <span>Patient Records</span>
           </li>
-          <li className={activeModule === 'scribe' ? 'active' : ''} onClick={() => setActiveModule('scribe')}>
+          <li className={activeModule === 'scribe' ? 'active' : ''} onClick={() => { setActiveModule('scribe'); setIsNavOpen(false); }}>
             <Mic size={20} /> <span>Auto-Scribe</span>
           </li>
-          <li className={activeModule === 'pharma' ? 'active' : ''} onClick={() => setActiveModule('pharma')}>
+          <li className={activeModule === 'pharma' ? 'active' : ''} onClick={() => { setActiveModule('pharma'); setIsNavOpen(false); }}>
             <Pill size={20} /> <span>Pharma AI</span>
           </li>
-          <li className={activeModule === 'vision' ? 'active' : ''} onClick={() => setActiveModule('vision')}>
+          <li className={activeModule === 'vision' ? 'active' : ''} onClick={() => { setActiveModule('vision'); setIsNavOpen(false); }}>
             <ScanEye size={20} /> <span>Vision AI</span>
           </li>
-          <li className={activeModule === 'multi-agent' ? 'active' : ''} onClick={() => setActiveModule('multi-agent')}>
+          <li className={activeModule === 'multi-agent' ? 'active' : ''} onClick={() => { setActiveModule('multi-agent'); setIsNavOpen(false); }}>
             <Users size={20} /> <span>Multi-Agent AI</span>
           </li>
-          <li className={activeModule === 'digital-twin' ? 'active' : ''} onClick={() => setActiveModule('digital-twin')}>
+          <li className={activeModule === 'digital-twin' ? 'active' : ''} onClick={() => { setActiveModule('digital-twin'); setIsNavOpen(false); }}>
             <Activity size={20} /> <span>AI Digital Twin</span>
           </li>
-          <li className={activeModule === 'genomic' ? 'active' : ''} onClick={() => setActiveModule('genomic')}>
+          <li className={activeModule === 'genomic' ? 'active' : ''} onClick={() => { setActiveModule('genomic'); setIsNavOpen(false); }}>
             <Dna size={20} /> <span>Genomic AI</span>
           </li>
-          <li className={activeModule === 'art-therapy' ? 'active' : ''} onClick={() => setActiveModule('art-therapy')}>
+          <li className={activeModule === 'art-therapy' ? 'active' : ''} onClick={() => { setActiveModule('art-therapy'); setIsNavOpen(false); }}>
             <Palette size={20} /> <span>Art Therapy</span>
           </li>
-          <li className={activeModule === 'pain-tracker' ? 'active' : ''} onClick={() => setActiveModule('pain-tracker')}>
+          <li className={activeModule === 'pain-tracker' ? 'active' : ''} onClick={() => { setActiveModule('pain-tracker'); setIsNavOpen(false); }}>
             <Camera size={20} /> <span>Pain Tracker</span>
           </li>
         </ul>
