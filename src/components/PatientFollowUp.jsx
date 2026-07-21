@@ -52,7 +52,7 @@ const PatientFollowUp = ({ patientId, onClose }) => {
   };
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(5px)' }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-panel)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(5px)' }}>
       <div style={{ background: '#18181b', padding: '2rem', borderRadius: '16px', width: '90%', maxWidth: '500px', border: '1px solid #3f3f46', position: 'relative' }}>
         <button onClick={onClose} style={{ position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', fontSize: '1.5rem' }}>&times;</button>
         
@@ -70,7 +70,7 @@ const PatientFollowUp = ({ patientId, onClose }) => {
               value={symptom}
               onChange={(e) => setSymptom(e.target.value)}
               placeholder="E.g., I'm feeling fine, or My chest is hurting again..."
-              style={{ width: '100%', height: '100px', padding: '1rem', background: 'rgba(0,0,0,0.5)', border: '1px solid #52525b', borderRadius: '8px', color: '#fff', marginBottom: '1rem', resize: 'none' }}
+              style={{ width: '100%', height: '100px', padding: '1rem', background: 'var(--bg-elevated)', border: '1px solid #52525b', borderRadius: '8px', color: '#fff', marginBottom: '1rem', resize: 'none' }}
               required
             />
             <button 

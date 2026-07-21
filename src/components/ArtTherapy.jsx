@@ -71,11 +71,11 @@ const ArtTherapy = () => {
   };
 
   return (
-    <div className="module-container" style={{ display: 'flex', gap: '2rem', height: '85vh' }}>
+    <div className="module-container" style={{ display: 'flex', gap: '2rem' }}>
       
       {/* Left Column: Input and Analysis */}
       <div className="glass-panel custom-scrollbar" style={{ flex: '0 0 40%', display: 'flex', flexDirection: 'column', overflowY: 'auto', paddingRight: '1rem' }}>
-        <div className="section-header" style={{ marginBottom: '1.5rem', position: 'sticky', top: 0, background: 'rgba(0,0,0,0.8)', zIndex: 10, paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="section-header" style={{ marginBottom: '1.5rem', position: 'sticky', top: 0, background: 'var(--bg-panel)', zIndex: 10, paddingBottom: '1rem', borderBottom: '1px solid var(--glass-border)' }}>
           <h2>Generative Art Therapy</h2>
           <p>AI-Assisted Psychological Expression</p>
         </div>
@@ -83,7 +83,7 @@ const ArtTherapy = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
           {/* Input Section */}
-          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+          <div style={{ background: 'var(--bg-elevated)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
             <h3 style={{ color: 'var(--primary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.1rem' }}>
               <HeartHandshake size={20} /> Express Your Feelings
             </h3>
@@ -91,7 +91,7 @@ const ArtTherapy = () => {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Describe your current emotional state, thoughts, or a traumatic memory in your own words..."
-              style={{ width: '100%', padding: '1rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--glass-border)', color: '#fff', fontSize: '1.1rem', resize: 'vertical', minHeight: '120px', fontFamily: 'inherit', lineHeight: '1.5' }}
+              style={{ width: '100%', padding: '1rem', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--glass-border)', color: '#fff', fontSize: '1.1rem', resize: 'vertical', minHeight: '120px', fontFamily: 'inherit', lineHeight: '1.5' }}
               disabled={isGenerating}
             />
             
@@ -120,7 +120,7 @@ const ArtTherapy = () => {
               </div>
 
               {aiReport.colorPalette && (
-                <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', padding: '1.5rem', borderRadius: '12px' }}>
+                <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--glass-border)', padding: '1.5rem', borderRadius: '12px' }}>
                   <h4 style={{ color: 'var(--text-muted)', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', textTransform: 'uppercase' }}><Palette size={16} /> Healing Color Palette</h4>
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     {aiReport.colorPalette.map((color, idx) => (
@@ -141,7 +141,7 @@ const ArtTherapy = () => {
                   value={patientId}
                   onChange={(e) => setPatientId(e.target.value)}
                   placeholder="e.g. PAT-90812"
-                  style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '1rem' }}
+                  style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-elevated)', color: '#fff', fontSize: '1rem' }}
                 />
               </div>
 
@@ -177,8 +177,8 @@ const ArtTherapy = () => {
       </div>
 
       {/* Right Column: Canvas */}
-      <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0', background: 'rgba(0,0,0,0.2)' }}>
-        <div className="section-header" style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', margin: 0 }}>
+      <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0', background: 'transparent' }}>
+        <div className="section-header" style={{ padding: '1.5rem', borderBottom: '1px solid var(--glass-border)', margin: 0 }}>
           <h2 style={{ fontSize: '1.2rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Palette size={20} color="#db2777" /> AI Emotional Canvas</h2>
         </div>
 

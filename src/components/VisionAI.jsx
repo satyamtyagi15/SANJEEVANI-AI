@@ -100,7 +100,7 @@ const VisionAI = () => {
               <p style={{ color: 'var(--text-muted)' }}>Drag & Drop or Click to browse (X-Ray, MRI, Dermoscopy)</p>
             </div>
           ) : (
-            <div style={{ flex: 1, position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
+            <div style={{ flex: 1, position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-dark)' }}>
               <img src={imagePreview} alt="Medical Scan Preview" style={{ maxWidth: '100%', maxHeight: '400px', objectFit: 'contain' }} />
               {isProcessing && (
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
@@ -176,7 +176,7 @@ const VisionAI = () => {
               <h4 style={{ color: 'var(--primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <ImageIcon size={18} /> Findings
               </h4>
-              <p style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px', lineHeight: '1.6' }}>
+              <p style={{ background: 'var(--bg-elevated)', padding: '1rem', borderRadius: '8px', lineHeight: '1.6' }}>
                 {report.findings}
               </p>
             </div>
@@ -185,7 +185,7 @@ const VisionAI = () => {
               <h4 style={{ color: 'var(--accent)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <FileText size={18} /> Impression
               </h4>
-              <p style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px', lineHeight: '1.6', fontSize: '1.1rem', fontWeight: '500' }}>
+              <p style={{ background: 'var(--bg-elevated)', padding: '1rem', borderRadius: '8px', lineHeight: '1.6', fontSize: '1.1rem', fontWeight: '500' }}>
                 {report.impression}
               </p>
             </div>
@@ -208,7 +208,7 @@ const VisionAI = () => {
                 value={patientId}
                 onChange={(e) => setPatientId(e.target.value)}
                 placeholder="e.g. PAT-90812"
-                style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '1rem' }}
+                style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-elevated)', color: '#fff', fontSize: '1rem' }}
               />
             </div>
 

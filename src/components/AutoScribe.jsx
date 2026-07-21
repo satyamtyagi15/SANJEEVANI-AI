@@ -141,22 +141,22 @@ const AutoScribe = () => {
             
             <div className="data-group">
               <h4 style={{ color: 'var(--accent)' }}>[S] Subjective</h4>
-              <p style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px' }}>{soapNote.subjective}</p>
+              <p style={{ background: 'var(--bg-elevated)', padding: '1rem', borderRadius: '8px' }}>{soapNote.subjective}</p>
             </div>
             
             <div className="data-group">
               <h4 style={{ color: 'var(--status-yellow)' }}>[O] Objective</h4>
-              <p style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px' }}>{soapNote.objective || 'No objective vitals mentioned.'}</p>
+              <p style={{ background: 'var(--bg-elevated)', padding: '1rem', borderRadius: '8px' }}>{soapNote.objective || 'No objective vitals mentioned.'}</p>
             </div>
             
             <div className="data-group">
               <h4 style={{ color: 'var(--status-red)' }}>[A] Assessment</h4>
-              <p style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px' }}>{soapNote.assessment}</p>
+              <p style={{ background: 'var(--bg-elevated)', padding: '1rem', borderRadius: '8px' }}>{soapNote.assessment}</p>
             </div>
             
             <div className="data-group">
               <h4 style={{ color: 'var(--status-green)' }}>[P] Plan</h4>
-              <p style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px' }}>{soapNote.plan}</p>
+              <p style={{ background: 'var(--bg-elevated)', padding: '1rem', borderRadius: '8px' }}>{soapNote.plan}</p>
             </div>
 
             <div className="data-group">
@@ -175,7 +175,7 @@ const AutoScribe = () => {
                 value={patientId}
                 onChange={(e) => setPatientId(e.target.value)}
                 placeholder="e.g. PAT-90812"
-                style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '1rem' }}
+                style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-elevated)', color: '#fff', fontSize: '1rem' }}
               />
             </div>
 

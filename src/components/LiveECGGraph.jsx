@@ -92,7 +92,7 @@ const LiveECGGraph = ({ signalData }) => {
   }, [signalData]);
 
   return (
-    <div className="ecg-container" style={{ width: '100%', height: '220px', background: '#050505', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.4)', overflow: 'hidden', position: 'relative', boxShadow: 'inset 0 0 20px rgba(16, 185, 129, 0.1)' }}>
+    <div className="ecg-container" style={{ width: '100%', height: '220px', background: 'var(--bg-dark)', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.4)', overflow: 'hidden', position: 'relative', boxShadow: 'inset 0 0 20px rgba(16, 185, 129, 0.1)' }}>
       <canvas 
         ref={canvasRef} 
         width={800} 

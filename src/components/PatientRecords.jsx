@@ -101,7 +101,7 @@ const PatientRecords = () => {
                   ) : (
                     <div style={{ color: '#a1a1aa' }}>
                       <h3 style={{ color: '#e4e4e7', marginTop: 0 }}>{report.type} Data</h3>
-                      <pre style={{ background: '#000', padding: '1rem', borderRadius: '8px', overflowX: 'auto', border: '1px solid #27272a', fontSize: '0.85rem' }}>
+                      <pre style={{ background: 'var(--bg-dark)', padding: '1rem', borderRadius: '8px', overflowX: 'auto', border: '1px solid #27272a', fontSize: '0.85rem' }}>
                         {JSON.stringify(report.data, null, 2)}
                       </pre>
                     </div>

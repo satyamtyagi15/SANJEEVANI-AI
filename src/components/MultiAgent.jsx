@@ -127,7 +127,7 @@ const MultiAgent = () => {
   };
 
   return (
-    <div className="module-container" style={{ display: 'flex', gap: '2rem', height: '85vh' }}>
+    <div className="module-container" style={{ display: 'flex', gap: '2rem' }}>
       
       {/* Left Column: Input */}
       <div className="glass-panel" style={{ flex: '0 0 35%', display: 'flex', flexDirection: 'column' }}>
@@ -137,7 +137,7 @@ const MultiAgent = () => {
         </div>
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--glass-border)', flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ background: 'var(--bg-elevated)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--glass-border)', flex: 1, display: 'flex', flexDirection: 'column' }}>
             <h3 style={{ color: 'var(--primary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
               <Users size={20} /> Active AI Board (13 Specialists)
             </h3>
@@ -184,7 +184,7 @@ const MultiAgent = () => {
             value={caseDescription}
             onChange={(e) => setCaseDescription(e.target.value)}
             placeholder="Describe the complex patient case here... (e.g., Patient is a 55yr old male with sudden numbness in left arm, history of hypertension, currently taking Lisinopril but complains of chest tightness today.)"
-            style={{ flex: 1, width: '100%', padding: '1rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--glass-border)', color: '#fff', fontSize: '1rem', resize: 'none', fontFamily: 'inherit' }}
+            style={{ flex: 1, width: '100%', padding: '1rem', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--glass-border)', color: '#fff', fontSize: '1rem', resize: 'none', fontFamily: 'inherit' }}
           />
 
           <button 
@@ -201,11 +201,11 @@ const MultiAgent = () => {
 
       {/* Right Column: Debate Log */}
       <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0' }}>
-        <div className="section-header" style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', margin: 0, background: 'rgba(0,0,0,0.2)' }}>
+        <div className="section-header" style={{ padding: '1.5rem', borderBottom: '1px solid var(--glass-border)', margin: 0, background: 'transparent' }}>
           <h2 style={{ fontSize: '1.2rem' }}>Live Debate Transcript</h2>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: '#0a0a0a' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--bg-dark)' }}>
           
           {debateLog.length === 0 && !isDebating && !consensus && (
             <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -219,7 +219,7 @@ const MultiAgent = () => {
               <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: getAgentColor(log.specialty), display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${getAgentBorder(log.specialty)}`, flexShrink: 0 }}>
                 {getAgentIcon(log.specialty)}
               </div>
-              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem 1.5rem', borderRadius: '0 12px 12px 12px', border: '1px solid rgba(255,255,255,0.05)', flex: 1 }}>
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem 1.5rem', borderRadius: '0 12px 12px 12px', border: '1px solid var(--glass-border)', flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                   <strong style={{ color: getAgentBorder(log.specialty) }}>{log.agent}</strong>
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase' }}>{log.specialty}</span>
@@ -252,7 +252,7 @@ const MultiAgent = () => {
                   value={patientId}
                   onChange={(e) => setPatientId(e.target.value)}
                   placeholder="e.g. PAT-90812"
-                  style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '1rem' }}
+                  style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-elevated)', color: '#fff', fontSize: '1rem' }}
                 />
               </div>
 

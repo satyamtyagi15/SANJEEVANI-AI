@@ -62,7 +62,7 @@ const GenomicScanner = () => {
   };
 
   return (
-    <div className="module-container" style={{ display: 'flex', gap: '2rem', height: '85vh' }}>
+    <div className="module-container" style={{ display: 'flex', gap: '2rem' }}>
       
       {/* Left Column: Input and Scanner */}
       <div className="glass-panel" style={{ flex: '0 0 35%', display: 'flex', flexDirection: 'column' }}>
@@ -73,7 +73,7 @@ const GenomicScanner = () => {
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
-          <div style={{ position: 'relative', flex: 1, background: '#050505', border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'hidden', padding: '1.5rem', fontFamily: 'monospace', color: 'var(--primary)', wordWrap: 'break-word', letterSpacing: '2px', lineHeight: '1.8' }}>
+          <div style={{ position: 'relative', flex: 1, background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'hidden', padding: '1.5rem', fontFamily: 'monospace', color: 'var(--primary)', wordWrap: 'break-word', letterSpacing: '2px', lineHeight: '1.8' }}>
             <textarea
               value={sequence}
               onChange={(e) => setSequence(e.target.value.toUpperCase().replace(/[^ATCG\n ]/g, ''))}
@@ -105,7 +105,7 @@ const GenomicScanner = () => {
 
           {errorMsg && <p style={{ color: 'var(--status-red)', textAlign: 'center', margin: 0 }}>{errorMsg}</p>}
 
-          <div style={{ display: 'flex', justifyContent: 'space-around', color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 'auto', padding: '1rem', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-around', color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 'auto', padding: '1rem', background: 'var(--bg-elevated)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Dna size={16} /> 3B Base Pairs</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Fingerprint size={16} /> Identity Protected</span>
           </div>
@@ -113,8 +113,8 @@ const GenomicScanner = () => {
       </div>
 
       {/* Right Column: AI Analysis Report */}
-      <div className="glass-panel custom-scrollbar" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0', background: 'rgba(0,0,0,0.2)', overflowY: 'auto' }}>
-        <div className="section-header" style={{ padding: '1.5rem 2rem', background: 'rgba(0,0,0,0.4)', borderBottom: '1px solid rgba(255,255,255,0.05)', margin: 0, position: 'sticky', top: 0, zIndex: 10 }}>
+      <div className="glass-panel custom-scrollbar" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0', background: 'transparent', overflowY: 'auto' }}>
+        <div className="section-header" style={{ padding: '1.5rem 2rem', background: 'var(--bg-elevated)', borderBottom: '1px solid var(--glass-border)', margin: 0, position: 'sticky', top: 0, zIndex: 10 }}>
           <h2 style={{ fontSize: '1.2rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Database size={20} color="var(--primary)" /> Clinical Genomic Analysis Report</h2>
         </div>
 
@@ -138,7 +138,7 @@ const GenomicScanner = () => {
             <div id="genomic-report" style={{ animation: 'fadeIn 0.5s ease-out', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
               
               {/* Top Banner */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', background: 'rgba(0,0,0,0.4)', borderRadius: '12px', borderLeft: `4px solid ${getRiskColor(report.riskLevel)}`, border: `1px solid ${getRiskColor(report.riskLevel)}40` }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', background: 'var(--bg-elevated)', borderRadius: '12px', borderLeft: `4px solid ${getRiskColor(report.riskLevel)}`, border: `1px solid ${getRiskColor(report.riskLevel)}40` }}>
                 <div>
                   <p style={{ color: 'var(--text-muted)', margin: '0 0 0.2rem 0', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Detected Mutation</p>
                   <h3 style={{ color: '#fff', margin: '0 0 0.5rem 0', fontSize: '1.8rem' }}>{report.detectedMutation}</h3>
@@ -173,7 +173,7 @@ const GenomicScanner = () => {
 
               {/* Protein Impact Score */}
               {report.proteinImpactScore && (
-                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ background: 'var(--bg-elevated)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.8rem' }}>
                     <h4 style={{ color: '#e2e8f0', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Activity size={18} color="#f59e0b" /> Protein Impact Severity</h4>
                     <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{report.proteinImpactScore} / 100</span>
@@ -185,7 +185,7 @@ const GenomicScanner = () => {
               )}
 
               {/* Description */}
-              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ background: 'var(--bg-elevated)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
                 <h4 style={{ color: 'var(--primary)', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><AlertOctagon size={18} /> Pathogenic Mechanism</h4>
                 <p style={{ color: '#cbd5e1', lineHeight: '1.7', margin: 0 }}>{report.description}</p>
               </div>
@@ -205,7 +205,7 @@ const GenomicScanner = () => {
 
                 <div style={{ background: 'rgba(0, 240, 255, 0.05)', border: '1px solid rgba(0, 240, 255, 0.3)', padding: '1.5rem', borderRadius: '12px' }}>
                   <h4 style={{ color: '#00f0ff', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ShieldCheck size={18} /> CRISPR-Cas9 Target</h4>
-                  <div style={{ padding: '1rem', background: '#0a0a0a', borderRadius: '8px', fontFamily: 'monospace', color: '#fff', borderLeft: '3px solid #00f0ff', fontSize: '0.9rem', lineHeight: '1.5', wordBreak: 'break-all' }}>
+                  <div style={{ padding: '1rem', background: 'var(--bg-dark)', borderRadius: '8px', fontFamily: 'monospace', color: '#fff', borderLeft: '3px solid #00f0ff', fontSize: '0.9rem', lineHeight: '1.5', wordBreak: 'break-all' }}>
                     {report.crisprTarget}
                   </div>
                 </div>
@@ -219,7 +219,7 @@ const GenomicScanner = () => {
                   value={patientId}
                   onChange={(e) => setPatientId(e.target.value)}
                   placeholder="e.g. PAT-90812"
-                  style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '1rem' }}
+                  style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-elevated)', color: '#fff', fontSize: '1rem' }}
                 />
               </div>
 

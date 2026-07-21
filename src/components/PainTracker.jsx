@@ -288,7 +288,7 @@ const PainTracker = () => {
   const alertStatus = getAlertLevel();
 
   return (
-    <div className="module-container" style={{ display: 'flex', gap: '2rem', height: '85vh' }}>
+    <div className="module-container" style={{ display: 'flex', gap: '2rem' }}>
       
       <div className="glass-panel" style={{ flex: '0 0 60%', display: 'flex', flexDirection: 'column', padding: '1rem' }}>
         <div className="section-header" style={{ margin: '0 0 1rem 0', display: 'flex', justifyContent: 'space-between' }}>
@@ -299,7 +299,7 @@ const PainTracker = () => {
           </div>
         </div>
 
-        <div style={{ flex: 1, position: 'relative', background: '#050505', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--glass-border)', boxShadow: 'inset 0 0 50px rgba(0,0,0,0.8)' }}>
+        <div style={{ flex: 1, position: 'relative', background: 'var(--bg-dark)', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--glass-border)', boxShadow: 'inset 0 0 50px rgba(0,0,0,0.8)' }}>
           <video 
             ref={videoRef} 
             width="640"
@@ -329,10 +329,10 @@ const PainTracker = () => {
 
           {isTracking && (
             <>
-              <div style={{ position: 'absolute', top: '15px', left: '15px', color: '#ff4d4d', fontFamily: 'monospace', animation: 'pulse 1.5s infinite', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.5)', padding: '0.5rem 1rem', borderRadius: '20px' }}>
+              <div style={{ position: 'absolute', top: '15px', left: '15px', color: '#ff4d4d', fontFamily: 'monospace', animation: 'pulse 1.5s infinite', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-elevated)', padding: '0.5rem 1rem', borderRadius: '20px' }}>
                 <div style={{ width: '8px', height: '8px', background: '#ff4d4d', borderRadius: '50%' }}></div> LIVE ANALYSIS
               </div>
-              <div style={{ position: 'absolute', bottom: '15px', right: '15px', color: '#00f0ff', fontFamily: 'monospace', background: 'rgba(0,0,0,0.5)', padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid rgba(0,240,255,0.3)' }}>
+              <div style={{ position: 'absolute', bottom: '15px', right: '15px', color: '#00f0ff', fontFamily: 'monospace', background: 'var(--bg-elevated)', padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid rgba(0,240,255,0.3)' }}>
                 TENSORFLOW + WEB AUDIO API
               </div>
             </>
@@ -341,14 +341,14 @@ const PainTracker = () => {
       </div>
 
       <div className="glass-panel custom-scrollbar" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-        <div className="section-header" style={{ position: 'sticky', top: 0, background: 'rgba(0,0,0,0.8)', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', zIndex: 10 }}>
+        <div className="section-header" style={{ position: 'sticky', top: 0, background: 'var(--bg-panel)', paddingBottom: '1rem', borderBottom: '1px solid var(--glass-border)', zIndex: 10 }}>
           <h2>Clinical Emotion & Pain Tracker</h2>
           <p>Audio-Visual Multimodal Analysis</p>
         </div>
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1rem' }}>
           
-          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: '12px', border: `1px solid ${alertStatus.color}`, transition: 'all 0.3s ease', boxShadow: `0 0 20px ${alertStatus.color}20` }}>
+          <div style={{ background: 'var(--bg-elevated)', padding: '1.5rem', borderRadius: '12px', border: `1px solid ${alertStatus.color}`, transition: 'all 0.3s ease', boxShadow: `0 0 20px ${alertStatus.color}20` }}>
             <h3 style={{ color: alertStatus.color, margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.3rem' }}>
               {alertStatus.icon} {alertStatus.text}
             </h3>
@@ -377,7 +377,7 @@ const PainTracker = () => {
                   <span>Corrugator Muscle (Eyebrow Furrow)</span>
                   <span>{metrics.furrow}%</span>
                 </div>
-                <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px' }}>
+                <div style={{ width: '100%', height: '6px', background: 'var(--bg-elevated)', borderRadius: '3px' }}>
                   <div style={{ width: `${metrics.furrow}%`, height: '100%', background: '#a855f7', borderRadius: '3px', transition: 'width 0.2s' }} />
                 </div>
               </div>
@@ -387,7 +387,7 @@ const PainTracker = () => {
                   <span>Orbicularis Oculi (Eye Squint)</span>
                   <span>{metrics.squint}%</span>
                 </div>
-                <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px' }}>
+                <div style={{ width: '100%', height: '6px', background: 'var(--bg-elevated)', borderRadius: '3px' }}>
                   <div style={{ width: `${metrics.squint}%`, height: '100%', background: '#3b82f6', borderRadius: '3px', transition: 'width 0.2s' }} />
                 </div>
               </div>
@@ -397,7 +397,7 @@ const PainTracker = () => {
                   <span>Zygomaticus (Mouth Grimace)</span>
                   <span>{metrics.grimace}%</span>
                 </div>
-                <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px' }}>
+                <div style={{ width: '100%', height: '6px', background: 'var(--bg-elevated)', borderRadius: '3px' }}>
                   <div style={{ width: `${metrics.grimace}%`, height: '100%', background: '#f97316', borderRadius: '3px', transition: 'width 0.2s' }} />
                 </div>
               </div>
@@ -407,14 +407,14 @@ const PainTracker = () => {
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Volume2 size={14}/> Vocal Distress (Audio)</span>
                   <span>{metrics.vocal}%</span>
                 </div>
-                <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px' }}>
+                <div style={{ width: '100%', height: '6px', background: 'var(--bg-elevated)', borderRadius: '3px' }}>
                   <div style={{ width: `${metrics.vocal}%`, height: '100%', background: '#00f0ff', borderRadius: '3px', transition: 'width 0.1s' }} />
                 </div>
               </div>
 
             </div>
 
-            <ul style={{ listStyle: 'none', padding: '1rem', margin: 'auto 0 0 0', display: 'flex', flexDirection: 'column', gap: '0.8rem', color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '0.9rem', background: '#000', borderRadius: '8px', borderLeft: '3px solid var(--primary)' }}>
+            <ul style={{ listStyle: 'none', padding: '1rem', margin: 'auto 0 0 0', display: 'flex', flexDirection: 'column', gap: '0.8rem', color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '0.9rem', background: 'var(--bg-dark)', borderRadius: '8px', borderLeft: '3px solid var(--primary)' }}>
               <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>VISION AI</span> <span style={{ color: '#00f0ff' }}>FaceMesh (468 pts)</span></li>
               <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>AUDIO AI</span> <span style={{ color: '#00f0ff' }}>Web Audio FFT</span></li>
               <li style={{ display: 'flex', justifyContent: 'space-between' }}><span>SENSOR FUSION</span> <span style={{ color: '#00f0ff' }}>Multimodal</span></li>

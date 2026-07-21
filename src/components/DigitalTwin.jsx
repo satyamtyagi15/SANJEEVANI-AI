@@ -74,7 +74,7 @@ const DigitalTwin = () => {
   );
 
   return (
-    <div className="module-container" style={{ display: 'flex', gap: '2rem', height: '85vh' }}>
+    <div className="module-container" style={{ display: 'flex', gap: '2rem' }}>
       
       {/* Left Column: Data Input */}
       <div className="glass-panel" style={{ flex: '0 0 35%', display: 'flex', flexDirection: 'column' }}>
@@ -88,11 +88,11 @@ const DigitalTwin = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Age</label>
-              <input type="number" placeholder="e.g. 45" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--glass-border)', color: '#fff' }} />
+              <input type="number" placeholder="e.g. 45" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--glass-border)', color: '#fff' }} />
             </div>
             <div>
               <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Gender</label>
-              <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--glass-border)', color: '#fff', appearance: 'none' }}>
+              <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--glass-border)', color: '#fff', appearance: 'none' }}>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
                 <option value="Other">Other</option>
@@ -100,27 +100,27 @@ const DigitalTwin = () => {
             </div>
             <div>
               <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Height (cm)</label>
-              <input type="number" placeholder="e.g. 175" value={formData.height} onChange={e => setFormData({...formData, height: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--glass-border)', color: '#fff' }} />
+              <input type="number" placeholder="e.g. 175" value={formData.height} onChange={e => setFormData({...formData, height: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--glass-border)', color: '#fff' }} />
             </div>
             <div>
               <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Weight (kg)</label>
-              <input type="number" placeholder="e.g. 80" value={formData.weight} onChange={e => setFormData({...formData, weight: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--glass-border)', color: '#fff' }} />
+              <input type="number" placeholder="e.g. 80" value={formData.weight} onChange={e => setFormData({...formData, weight: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--glass-border)', color: '#fff' }} />
             </div>
           </div>
 
           <div>
             <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Chronic Conditions & Meds</label>
-            <textarea placeholder="e.g. Hypertension, Metformin 500mg" value={formData.conditions} onChange={e => setFormData({...formData, conditions: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--glass-border)', color: '#fff', resize: 'vertical', minHeight: '60px' }} />
+            <textarea placeholder="e.g. Hypertension, Metformin 500mg" value={formData.conditions} onChange={e => setFormData({...formData, conditions: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--glass-border)', color: '#fff', resize: 'vertical', minHeight: '60px' }} />
           </div>
 
           <div>
             <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Family History</label>
-            <textarea placeholder="e.g. Father had heart attack at 50" value={formData.familyHistory} onChange={e => setFormData({...formData, familyHistory: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--glass-border)', color: '#fff', resize: 'vertical', minHeight: '60px' }} />
+            <textarea placeholder="e.g. Father had heart attack at 50" value={formData.familyHistory} onChange={e => setFormData({...formData, familyHistory: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--glass-border)', color: '#fff', resize: 'vertical', minHeight: '60px' }} />
           </div>
 
           <div>
             <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Lifestyle Details</label>
-            <textarea placeholder="e.g. Smokes 10/day, sedantry job, high stress" value={formData.lifestyle} onChange={e => setFormData({...formData, lifestyle: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--glass-border)', color: '#fff', resize: 'vertical', minHeight: '60px' }} />
+            <textarea placeholder="e.g. Smokes 10/day, sedantry job, high stress" value={formData.lifestyle} onChange={e => setFormData({...formData, lifestyle: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--glass-border)', color: '#fff', resize: 'vertical', minHeight: '60px' }} />
           </div>
 
           <button 
@@ -136,7 +136,7 @@ const DigitalTwin = () => {
       </div>
 
       {/* Right Column: Twin Output */}
-      <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '1.5rem', background: 'rgba(0,0,0,0.2)', overflowY: 'auto' }}>
+      <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '1.5rem', background: 'transparent', overflowY: 'auto' }}>
         
         {!trajectoryData && !isGenerating && (
           <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -184,7 +184,7 @@ const DigitalTwin = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
               
               {/* Organ Health */}
-              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+              <div style={{ background: 'var(--bg-elevated)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fff', marginTop: 0, marginBottom: '1.5rem', fontSize: '1.1rem' }}><Stethoscope size={20} color="#00f0ff" /> Organ Health Index</h3>
                 {renderOrganBar('Heart', trajectoryData.organHealth.heart, '#ff4d4d', <Heart size={16} />)}
                 {renderOrganBar('Brain', trajectoryData.organHealth.brain, '#a855f7', <Brain size={16} />)}

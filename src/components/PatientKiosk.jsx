@@ -562,7 +562,7 @@ const PatientKiosk = ({ onTriageComplete }) => {
                   value={manualText}
                   onChange={(e) => setManualText(e.target.value)}
                   placeholder="Or type your symptoms here..."
-                  style={{flex: 1, padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', outline: 'none'}}
+                  style={{flex: 1, padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--glass-border)', color: 'white', outline: 'none'}}
                   onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                 />
                 <button 
@@ -583,7 +583,7 @@ const PatientKiosk = ({ onTriageComplete }) => {
           </div>
           
           <div className="kiosk-content" style={{ alignItems: 'stretch' }}>
-            <div className="chat-history" style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '12px', minHeight: '150px', maxHeight: '300px', overflowY: 'auto', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="chat-history" style={{ background: 'transparent', padding: '1rem', borderRadius: '12px', minHeight: '150px', maxHeight: '300px', overflowY: 'auto', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {chatHistory.map((msg, idx) => (
                 <div key={idx} style={{ 
                   alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
@@ -638,7 +638,7 @@ const PatientKiosk = ({ onTriageComplete }) => {
                   onChange={(e) => setManualText(e.target.value)}
                   placeholder="Type your answer here..."
                   disabled={isProcessing}
-                  style={{flex: 1, padding: '0.8rem', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', outline: 'none'}}
+                  style={{flex: 1, padding: '0.8rem', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--glass-border)', color: 'white', outline: 'none'}}
                   onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                 />
                 <button 

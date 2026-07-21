@@ -57,7 +57,7 @@ const PharmaAI = () => {
             placeholder="Enter medication name (e.g., Warfarin, Aspirin)" 
             value={currentDrug}
             onChange={(e) => setCurrentDrug(e.target.value)}
-            style={{ flex: 1, padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '1rem' }}
+            style={{ flex: 1, padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-elevated)', color: '#fff', fontSize: '1rem' }}
           />
           <button type="submit" style={{ padding: '0 1.5rem', borderRadius: '8px', border: 'none', background: 'var(--primary)', color: '#000', fontWeight: 'bold', cursor: 'pointer' }}>
             Add Drug
@@ -80,7 +80,7 @@ const PharmaAI = () => {
           placeholder="e.g., CYP2C9 poor metabolizer, HLA-B*1502 positive" 
           value={genes}
           onChange={(e) => setGenes(e.target.value)}
-          style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '1rem', marginBottom: '2rem' }}
+          style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-elevated)', color: '#fff', fontSize: '1rem', marginBottom: '2rem' }}
         />
 
         {errorMsg && <p style={{ color: 'var(--status-red)', marginBottom: '1rem' }}>{errorMsg}</p>}
@@ -135,7 +135,7 @@ const PharmaAI = () => {
                 </div>
               ) : (
                 result.interactions.map((interaction, idx) => (
-                  <div key={idx} style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '8px', padding: '1.5rem', border: '1px solid rgba(255,42,42,0.2)' }}>
+                  <div key={idx} style={{ background: 'var(--bg-elevated)', borderRadius: '8px', padding: '1.5rem', border: '1px solid rgba(255,42,42,0.2)' }}>
                     <h4 style={{ color: 'var(--status-red)', marginBottom: '0.5rem', fontSize: '1.1rem' }}>
                       ⚠️ {interaction.drugsInvolved.join(' ↔ ')}
                     </h4>

@@ -57,7 +57,7 @@ const EpidemicAlert = ({ outbreakData, onClose }) => {
           System has detected a high concentration of incoming patients with similar acute symptoms.
         </p>
 
-        <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '12px', padding: '1.5rem', marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ background: 'var(--bg-elevated)', borderRadius: '12px', padding: '1.5rem', marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Activity size={18}/> Outbreak Category</span>
             <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.2rem', background: '#dc2626', padding: '0.2rem 0.8rem', borderRadius: '6px' }}>

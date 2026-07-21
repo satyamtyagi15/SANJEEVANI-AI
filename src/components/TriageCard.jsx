@@ -201,7 +201,7 @@ const TriageCard = ({ data }) => {
   return (
     <>
       {showQrExpanded && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(5px)' }} onClick={() => setShowQrExpanded(false)}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-panel)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(5px)' }} onClick={() => setShowQrExpanded(false)}>
           <div style={{ background: '#fff', padding: '2rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setShowQrExpanded(false)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#666' }}>
               <X size={24} />
@@ -264,7 +264,7 @@ const TriageCard = ({ data }) => {
                   type="text" 
                   value={waitTime} 
                   onChange={(e) => setWaitTime(e.target.value)} 
-                  style={{ background: 'rgba(0,0,0,0.5)', color: '#fff', border: '1px solid #60a5fa', borderRadius: '4px', padding: '0.3rem 0.6rem', width: '120px', outline: 'none' }}
+                  style={{ background: 'var(--bg-elevated)', color: '#fff', border: '1px solid #60a5fa', borderRadius: '4px', padding: '0.3rem 0.6rem', width: '120px', outline: 'none' }}
                 />
                 <button onClick={handleSaveWaitTime} style={{ background: '#10b981', border: 'none', color: '#fff', borderRadius: '4px', cursor: 'pointer', padding: '0.3rem' }}><Check size={16} /></button>
               </>
@@ -293,7 +293,7 @@ const TriageCard = ({ data }) => {
             </div>
 
             {/* XAI: Explainable AI Section */}
-            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', marginTop: '1.5rem' }}>
+            <div style={{ background: 'var(--bg-elevated)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', marginTop: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <h4 style={{ margin: 0, color: '#e4e4e7', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   <ShieldAlert size={16} color="#8b5cf6" /> AI Risk Confidence Meter
@@ -353,7 +353,7 @@ const TriageCard = ({ data }) => {
             </div>
           )}
           
-          <div className="clinical-notes" style={{ padding: '0.8rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', borderLeft: '3px solid #8b5cf6', margin: '0.5rem 0', fontSize: '0.9rem', color: '#d4d4d8' }}>
+          <div className="clinical-notes" style={{ padding: '0.8rem', background: 'transparent', borderRadius: '8px', borderLeft: '3px solid #8b5cf6', margin: '0.5rem 0', fontSize: '0.9rem', color: '#d4d4d8' }}>
             <strong>Clinical Notes:</strong> {data.clinicalNotes}
           </div>
 
@@ -507,7 +507,7 @@ const TriageCard = ({ data }) => {
           </div>
           <div className="vitals-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem', marginTop: '0.5rem' }}>
             {data.vitalsToCheck.map((vital, i) => (
-              <div key={i} className="vital-item" style={{ padding: '0.6rem', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              <div key={i} className="vital-item" style={{ padding: '0.6rem', background: 'var(--bg-elevated)', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#fff', fontSize: '0.9rem', fontWeight: '500' }}>
                   <HeartPulse size={14} style={{ color: '#ef4444' }} /> {typeof vital === 'object' ? vital.name : vital}
                 </div>
@@ -522,7 +522,7 @@ const TriageCard = ({ data }) => {
         <div className="data-group original-transcript">
           <h4>Clinical Interaction Log ({data.language})</h4>
           {data.chatHistory && data.chatHistory.length > 0 ? (
-             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px' }}>
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'transparent', padding: '1rem', borderRadius: '8px' }}>
                 {data.chatHistory.map((msg, idx) => (
                   <div key={idx} style={{ color: msg.role === 'user' ? '#93c5fd' : '#c4b5fd', fontSize: '0.9rem' }}>
                     <strong>{msg.role === 'user' ? 'Patient' : 'AI Doctor'}:</strong> {msg.content}
@@ -568,7 +568,7 @@ const TriageCard = ({ data }) => {
 
     {/* Contact Capture Modal for Guardian Dispatch */}
     {showContactModal && (
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(5px)' }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-panel)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(5px)' }}>
         <div style={{ background: '#18181b', padding: '2rem', borderRadius: '16px', width: '90%', maxWidth: '400px', border: '1px solid #3f3f46', position: 'relative' }}>
           <button onClick={() => setShowContactModal(false)} style={{ position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer' }}><X size={20} /></button>
           
@@ -587,7 +587,7 @@ const TriageCard = ({ data }) => {
                 value={contactPhone}
                 onChange={(e) => setContactPhone(e.target.value)}
                 placeholder="+919876543210"
-                style={{ width: '100%', padding: '0.8rem', background: 'rgba(0,0,0,0.5)', border: '1px solid #52525b', borderRadius: '8px', color: '#fff', outline: 'none' }}
+                style={{ width: '100%', padding: '0.8rem', background: 'var(--bg-elevated)', border: '1px solid #52525b', borderRadius: '8px', color: '#fff', outline: 'none' }}
               />
             </div>
             
@@ -600,7 +600,7 @@ const TriageCard = ({ data }) => {
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
                 placeholder="patient@example.com"
-                style={{ width: '100%', padding: '0.8rem', background: 'rgba(0,0,0,0.5)', border: '1px solid #52525b', borderRadius: '8px', color: '#fff', outline: 'none' }}
+                style={{ width: '100%', padding: '0.8rem', background: 'var(--bg-elevated)', border: '1px solid #52525b', borderRadius: '8px', color: '#fff', outline: 'none' }}
               />
             </div>
             

@@ -105,7 +105,7 @@ const PharmacyPrescriptionWidget = ({ suggestedMeds, patientId, location, coords
         <select 
           value={selectedPharmacy}
           onChange={(e) => setSelectedPharmacy(e.target.value)}
-          style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', outline: 'none', fontSize: '0.85rem' }}
+          style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', background: 'var(--bg-elevated)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', outline: 'none', fontSize: '0.85rem' }}
           disabled={isSending || sentStatus || isFetchingPharmacies}
         >
           {isFetchingPharmacies ? (
@@ -118,7 +118,7 @@ const PharmacyPrescriptionWidget = ({ suggestedMeds, patientId, location, coords
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {medicines.map((med, idx) => (
-          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
               <Pill size={16} style={{ color: '#a1a1aa' }} />
               <strong style={{ color: '#e5e7eb', fontSize: '0.9rem' }}>{med.name}</strong>
@@ -173,7 +173,7 @@ const PharmacyPrescriptionWidget = ({ suggestedMeds, patientId, location, coords
             value={newMedicineName}
             onChange={(e) => setNewMedicineName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAddMedicine()}
-            style={{ flex: 1, padding: '0.6rem 1rem', borderRadius: '6px', background: 'rgba(0,0,0,0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', outline: 'none' }}
+            style={{ flex: 1, padding: '0.6rem 1rem', borderRadius: '6px', background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', outline: 'none' }}
           />
           <button 
             onClick={handleAddMedicine}

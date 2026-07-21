@@ -20,7 +20,7 @@ const GuardianAlerts = () => {
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {activeAlerts.map(alert => (
-          <div key={alert._id} style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #ef4444' }}>
+          <div key={alert._id} style={{ background: 'var(--bg-elevated)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #ef4444' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <strong style={{ color: '#fff', fontSize: '1.1rem' }}>Patient ID: {alert.patientId}</strong>
