@@ -1,31 +1,42 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg-dark: #040711;
-  --bg-panel: rgba(10, 15, 29, 0.65);
-  --primary: #00f0ff;
-  --primary-glow: rgba(0, 240, 255, 0.4);
-  --accent: #8b5cf6;
-  --accent-glow: rgba(139, 92, 246, 0.4);
+  /* Premium Slate Dark Theme */
+  --bg-dark: #0f172a;
+  --bg-panel: rgba(30, 41, 59, 0.75);
+  --bg-surface: #1e293b;
+  --bg-elevated: #334155;
+  
+  --primary: #0ea5e9;
+  --primary-glow: rgba(14, 165, 233, 0.25);
+  --primary-hover: #38bdf8;
+  
+  --accent: #6366f1;
+  --accent-glow: rgba(99, 102, 241, 0.25);
+  
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   
-  --status-red: #ff2a2a;
-  --status-red-bg: rgba(255, 42, 42, 0.15);
+  /* Clinical Status Colors */
+  --status-red: #ef4444;
+  --status-red-bg: rgba(239, 68, 68, 0.12);
   --status-yellow: #f59e0b;
-  --status-yellow-bg: rgba(245, 158, 11, 0.15);
-  --status-green: #00ff88;
-  --status-green-bg: rgba(0, 255, 136, 0.15);
+  --status-yellow-bg: rgba(245, 158, 11, 0.12);
+  --status-green: #10b981;
+  --status-green-bg: rgba(16, 185, 129, 0.12);
 
-  --glass-border: rgba(0, 240, 255, 0.15);
-  --glass-highlight: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.03);
 }
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
@@ -33,14 +44,14 @@ body {
   color: var(--text-main);
   min-height: 100vh;
   overflow-x: hidden;
+  /* Clean subtle background instead of messy neon dots */
   background-image: 
-    linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px),
-    radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.1), transparent 30%),
-    radial-gradient(circle at 85% 30%, rgba(0, 240, 255, 0.1), transparent 30%);
-  background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%;
+    radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.05) 0%, transparent 50%);
+  background-attachment: fixed;
 }
 
+/* Base Layout */
 .super-app-layout {
   display: flex;
   min-height: 100vh;
@@ -49,14 +60,14 @@ body {
   background-color: var(--bg-dark);
 }
 
+/* Sleek SaaS Sidebar */
 .sci-fi-sidebar {
-  width: 250px;
-  background: rgba(4, 7, 17, 0.95);
+  width: 260px;
+  background: var(--bg-surface);
   border-right: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
   padding: 2rem 0;
-  box-shadow: 10px 0 30px rgba(0,0,0,0.5);
   z-index: 50;
   position: sticky;
   top: 0;
@@ -64,69 +75,91 @@ body {
 }
 
 .sidebar-logo {
-  text-align: center;
-  padding: 0 1rem 2rem;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  margin-bottom: 2rem;
+  text-align: left;
+  padding: 0 1.5rem 2rem;
+  border-bottom: 1px solid var(--glass-border);
+  margin-bottom: 1.5rem;
 }
 
 .sidebar-logo h1 {
-  font-size: 1.5rem;
-  color: var(--primary);
-  letter-spacing: 2px;
-  margin: 0;
-  text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: 0.5px;
+  margin: 0 0 0.2rem 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .sidebar-logo span {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  letter-spacing: 1.5px;
-  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--primary);
+  letter-spacing: 1px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .nav-menu {
   list-style: none;
-  padding: 0;
+  padding: 0 1rem;
   margin: 0;
   flex: 1;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-elevated);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 .nav-menu li {
-  padding: 1.2rem 2rem;
+  padding: 0.8rem 1rem;
   display: flex;
   align-items: center;
   gap: 1rem;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.3s ease;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.9rem;
-  border-left: 3px solid transparent;
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-radius: 8px;
 }
 
 .nav-menu li:hover {
-  background: rgba(0, 240, 255, 0.05);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
 }
 
 .nav-menu li.active {
-  background: linear-gradient(90deg, rgba(0, 240, 255, 0.1), transparent);
+  background: var(--primary-glow);
   color: var(--primary);
-  border-left: 3px solid var(--primary);
-  box-shadow: inset 10px 0 20px rgba(0, 240, 255, 0.05);
 }
 
 .system-status {
-  padding: 1.5rem 2rem;
-  border-top: 1px solid rgba(255,255,255,0.05);
+  padding: 1.5rem;
+  margin: 0 1rem;
+  border-top: 1px solid var(--glass-border);
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
-  color: var(--status-green);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .status-dot {
@@ -134,10 +167,10 @@ body {
   height: 8px;
   background: var(--status-green);
   border-radius: 50%;
-  box-shadow: 0 0 10px var(--status-green);
-  animation: blink 2s infinite;
+  box-shadow: 0 0 8px var(--status-green-bg);
 }
 
+/* App Containers */
 .module-content {
   flex: 1;
   position: relative;
@@ -146,9 +179,12 @@ body {
 }
 
 .module-container {
-  padding: 1.5rem 2rem;
+  padding: 2rem;
   min-height: 100vh;
-  color: #fff;
+  color: var(--text-main);
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .app-container {
@@ -159,26 +195,14 @@ body {
   align-items: flex-start;
 }
 
-.app-container::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--primary), transparent);
-  opacity: 0.5;
-  z-index: 100;
-}
-
-/* Split View Layout */
+/* Split View Layout for Triage */
 .kiosk-section {
-  flex: 1;
+  flex: 0 0 450px;
   border-right: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
-  background: linear-gradient(90deg, rgba(0, 240, 255, 0.02), transparent);
-  
-  /* UX FIX: Sticky Kiosk so it doesn't stretch and the mic is always accessible */
+  padding: 2rem;
+  background: var(--bg-dark);
   position: sticky;
   top: 0;
   height: 100vh;
@@ -189,260 +213,186 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
-  background: rgba(4, 7, 17, 0.8);
-  box-shadow: inset 20px 0 50px rgba(0,0,0,0.5);
+  padding: 2rem;
+  background: var(--bg-dark);
   min-height: 100vh;
 }
 
 .section-header {
-  margin-bottom: 1.5rem;
-  position: relative;
-}
-
-.section-header::after {
-  content: '';
-  position: absolute;
-  bottom: -6px;
-  left: 0;
-  width: 30px;
-  height: 2px;
-  background: var(--primary);
-  box-shadow: 0 0 10px var(--primary);
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--glass-border);
 }
 
 .section-header h2 {
-  font-size: 1.4rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: #fff;
-  text-shadow: 0 0 15px rgba(255,255,255,0.2);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-main);
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .section-header p {
-  color: var(--primary);
-  font-size: 0.8rem;
-  margin-top: 0.3rem;
-  font-family: 'JetBrains Mono', monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 0.4rem;
+  text-transform: none;
 }
 
-/* Glass Panel */
+/* Clinical Glass Panel */
 .glass-panel {
   background: var(--bg-panel);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
-  border-top: 1px solid rgba(255,255,255,0.1);
   border-radius: 12px;
-  padding: 1rem 1.2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
-/* Kiosk Specific */
+.glass-panel:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Kiosk Specifics */
 .kiosk-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1.5rem;
+  gap: 2rem;
 }
 
 .mic-button {
-  width: 100px;
-  height: 100px;
+  width: 90px;
+  height: 90px;
   border-radius: 50%;
-  border: 2px solid rgba(0, 240, 255, 0.3);
-  background: rgba(10, 15, 29, 0.8);
-  color: var(--primary);
+  border: 1px solid var(--glass-border);
+  background: var(--bg-surface);
+  color: var(--text-main);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 
-    0 0 15px rgba(0, 240, 255, 0.1),
-    inset 0 0 15px rgba(0, 240, 255, 0.1);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
   position: relative;
-  z-index: 10;
-  backdrop-filter: blur(10px);
-}
-
-.mic-button::before {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  background: conic-gradient(from 0deg, transparent, var(--primary), transparent 30%);
-  z-index: -1;
-  animation: rotate 4s linear infinite;
-  opacity: 0.5;
-}
-
-@keyframes rotate {
-  100% { transform: rotate(360deg); }
 }
 
 .mic-button:hover {
-  transform: scale(1.05);
-  box-shadow: 
-    0 0 30px rgba(0, 240, 255, 0.3),
-    inset 0 0 20px rgba(0, 240, 255, 0.2);
-  color: #fff;
+  transform: translateY(-2px);
   border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 }
 
 .mic-button.listening {
-  background: rgba(0, 240, 255, 0.1);
-  color: #fff;
+  background: var(--primary-glow);
+  color: var(--primary);
   border-color: var(--primary);
-  animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  animation: pulse-border 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-@keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.5); }
-  70% { box-shadow: 0 0 0 40px rgba(0, 240, 255, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0); }
+@keyframes pulse-border {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.4); }
+  50% { box-shadow: 0 0 0 15px rgba(14, 165, 233, 0); }
 }
 
 .status-text {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 500;
-  color: var(--primary);
+  color: var(--text-main);
   text-align: center;
-  font-family: 'JetBrains Mono', monospace;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .transcript-box {
   width: 100%;
-  max-width: 550px;
-  min-height: 120px;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--bg-surface);
   border-radius: 12px;
   padding: 1.5rem;
   border: 1px solid var(--glass-border);
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   line-height: 1.6;
-  color: #fff;
-  position: relative;
-  overflow: hidden;
+  color: var(--text-main);
 }
 
-.transcript-box::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0;
-  width: 3px; height: 100%;
-  background: var(--primary);
-  box-shadow: 0 0 10px var(--primary);
-}
-
-/* Dashboard Specific */
+/* EHR Cards */
 .dashboard-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  padding-right: 15px;
-}
-
-.dashboard-content::-webkit-scrollbar {
-  width: 4px;
-}
-.dashboard-content::-webkit-scrollbar-track {
-  background: rgba(255,255,255,0.02);
-  border-radius: 4px;
-}
-.dashboard-content::-webkit-scrollbar-thumb {
-  background: var(--primary);
-  border-radius: 4px;
-  box-shadow: 0 0 10px var(--primary);
 }
 
 .ehr-card {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  animation: slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  background: linear-gradient(145deg, rgba(20, 27, 45, 0.8), rgba(10, 15, 29, 0.9));
+  gap: 1.5rem;
+  background: var(--bg-surface);
   border: 1px solid var(--glass-border);
   border-radius: 12px;
   padding: 1.5rem;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  position: relative;
-  overflow: hidden;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  transition: all 0.2s ease;
 }
 
 .ehr-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 240, 255, 0.1);
-  border-color: rgba(0, 240, 255, 0.3);
-}
-
-@keyframes slide-in {
-  from { opacity: 0; transform: translateX(30px); }
-  to { opacity: 1; transform: translateX(0); }
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
 .ehr-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  align-items: flex-start;
+  border-bottom: 1px solid var(--glass-border);
   padding-bottom: 1rem;
 }
 
 .patient-info h3 {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: 1px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-main);
 }
 
 .patient-info p {
   color: var(--text-muted);
   font-size: 0.85rem;
   font-family: 'JetBrains Mono', monospace;
-  margin-top: 0.3rem;
+  margin-top: 0.4rem;
 }
 
 .priority-badge {
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1.5px;
+  letter-spacing: 0.5px;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-family: 'JetBrains Mono', monospace;
+  gap: 0.4rem;
 }
 
 .priority-badge.red {
   background: var(--status-red-bg);
   color: var(--status-red);
-  border: 1px solid rgba(255, 42, 42, 0.4);
-  box-shadow: 0 0 15px rgba(255, 42, 42, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .priority-badge.yellow {
   background: var(--status-yellow-bg);
   color: var(--status-yellow);
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
 .priority-badge.green {
   background: var(--status-green-bg);
   color: var(--status-green);
-  border: 1px solid rgba(0, 255, 136, 0.4);
-  box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 .priority-dot {
@@ -450,28 +400,21 @@ body {
   height: 6px;
   border-radius: 50%;
   background: currentColor;
-  box-shadow: 0 0 8px currentColor;
-  animation: blink 2s infinite;
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
 }
 
 .ehr-body {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1.5rem;
 }
 
 .data-group h4 {
-  color: var(--primary);
+  color: var(--text-muted);
   font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin-bottom: 0.8rem;
-  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.6rem;
+  font-weight: 600;
 }
 
 .tag-list {
@@ -481,41 +424,41 @@ body {
 }
 
 .tag {
-  background: rgba(0, 240, 255, 0.05);
-  border: 1px solid rgba(0, 240, 255, 0.2);
+  background: var(--bg-elevated);
+  border: 1px solid var(--glass-border);
   padding: 0.3rem 0.6rem;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 0.8rem;
-  color: #e2e8f0;
-  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-main);
 }
 
 .original-transcript {
-  grid-column: span 2;
-  background: rgba(0, 0, 0, 0.4);
+  grid-column: 1 / -1;
+  background: var(--bg-dark);
   padding: 1rem;
   border-radius: 8px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  border-left: 3px solid var(--primary);
   font-style: italic;
-  color: #94a3b8;
-  border-left: 2px solid var(--accent);
 }
 
 .recommendations {
-  grid-column: span 2;
+  grid-column: 1 / -1;
 }
 
 .recommendation-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.8rem;
-  background: rgba(0, 240, 255, 0.05);
-  border: 1px solid rgba(0, 240, 255, 0.15);
-  padding: 0.8rem 1rem;
-  border-radius: 6px;
-  color: #cffafe;
+  background: var(--bg-dark);
+  border: 1px solid var(--glass-border);
+  padding: 1rem;
+  border-radius: 8px;
+  color: var(--text-main);
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .empty-state {
@@ -524,105 +467,32 @@ body {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: var(--primary);
+  min-height: 300px;
+  color: var(--text-muted);
   text-align: center;
   gap: 1rem;
-  opacity: 0.5;
-  font-family: 'JetBrains Mono', monospace;
-  text-transform: uppercase;
-  letter-spacing: 2px;
 }
 
 .empty-state svg {
-  opacity: 0.8;
-  filter: drop-shadow(0 0 10px var(--primary));
+  color: var(--glass-border);
 }
 
+
 /* ========================================================= */
-/* ULTIMATE RESPONSIVE UI / UX SETTINGS (LAPTOP, TABLET, MOBILE) */
+/* ULTIMATE RESPONSIVE UI / UX SETTINGS                      */
 /* ========================================================= */
 
 @media (max-width: 1024px) {
-  .super-app-layout {
-    flex-direction: column;
-  }
-  
-  .sci-fi-sidebar {
-    width: 100vw;
-    height: auto;
-    position: sticky;
-    top: 0;
-    flex-direction: row;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    overflow-x: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--glass-border);
-    box-shadow: 0 5px 20px rgba(0,0,0,0.8);
-    background: rgba(4, 7, 17, 0.98);
-    z-index: 999;
-  }
-  
-  .sidebar-logo {
-    margin-bottom: 0;
-    margin-right: 1.5rem;
-    padding: 0 1rem 0 0;
-    border-bottom: none;
-    border-right: 1px solid rgba(255,255,255,0.05);
-  }
-  
-  .sidebar-logo h1 {
-    font-size: 1.2rem;
-  }
-
-  .nav-menu {
-    display: flex;
-    flex-direction: row;
-    overflow-x: auto;
-    overflow-y: hidden;
-    gap: 0.5rem;
-    padding-bottom: 5px;
-  }
-  
-  .nav-menu::-webkit-scrollbar {
-    height: 4px;
-  }
-  .nav-menu::-webkit-scrollbar-thumb {
-    background: var(--primary);
-    border-radius: 4px;
-  }
-
-  .nav-menu li {
-    padding: 0.6rem 1.2rem;
-    white-space: nowrap;
-    border-left: none;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    border-bottom: none;
-    background: rgba(255,255,255,0.02);
-  }
-  
-  .nav-menu li.active {
-    border-left: none;
-    border-bottom: none;
-    background: rgba(0, 240, 255, 0.15);
-    box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
-    border: 1px solid var(--primary);
-  }
-  
-  .system-status {
-    display: none;
-  }
-
   .app-container {
     flex-direction: column;
-    align-items: stretch;
   }
   
   .kiosk-section {
-    position: static;
+    flex: none;
+    width: 100%;
     height: auto;
-    min-height: auto;
+    min-height: 0;
+    position: static;
     border-right: none;
     border-bottom: 1px solid var(--glass-border);
     padding: 1.5rem;
@@ -631,23 +501,99 @@ body {
   .dashboard-section {
     padding: 1.5rem;
   }
-
+  
   .ehr-body {
     grid-template-columns: 1fr;
   }
-
-  .section-header h2 {
-    font-size: 1.6rem;
-  }
 }
 
+/* Mobile Specific - Transform Sidebar into Bottom/Top Nav */
 @media (max-width: 768px) {
   html {
-    font-size: 14px; /* Scale down everything globally */
+    font-size: 15px; /* Better readability */
+  }
+
+  .super-app-layout {
+    flex-direction: column;
+    padding-bottom: 70px; /* Space for bottom nav */
+  }
+
+  /* Transform sidebar into a fixed bottom navigation bar */
+  .sci-fi-sidebar {
+    position: fixed;
+    bottom: 0;
+    top: auto;
+    left: 0;
+    width: 100vw;
+    height: 70px;
+    flex-direction: row;
+    padding: 0;
+    border-right: none;
+    border-top: 1px solid var(--glass-border);
+    background: rgba(30, 41, 59, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 1000;
+    box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.1);
+  }
+
+  /* Hide Logo and Status on Mobile to save space */
+  .sidebar-logo, .system-status {
+    display: none;
+  }
+
+  /* Horizontal scrolling nav menu for mobile */
+  .nav-menu {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 0.5rem;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav-menu::-webkit-scrollbar {
+    display: none; /* Hide scrollbar for clean look */
+  }
+
+  .nav-menu li {
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.5rem;
+    font-size: 0.7rem;
+    min-width: 80px;
+    text-align: center;
+    border-radius: 8px;
+    background: transparent;
+  }
+
+  .nav-menu li span {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+  }
+
+  .nav-menu li.active {
+    background: transparent;
+    color: var(--primary);
+  }
+
+  .nav-menu li.active svg {
+    filter: drop-shadow(0 0 5px var(--primary-glow));
   }
 
   .module-container {
     padding: 1rem;
+    min-height: calc(100vh - 70px);
+  }
+
+  .section-header h2 {
+    font-size: 1.2rem;
   }
 
   .kiosk-content {
@@ -655,50 +601,19 @@ body {
   }
 
   .mic-button {
-    width: 110px;
-    height: 110px;
-  }
-  
-  .transcript-box {
-    min-height: 80px;
-    padding: 1rem;
-    font-size: 1.1rem;
-  }
-
-  .ehr-card {
-    padding: 1.2rem;
-    border-radius: 16px;
-  }
-
-  .patient-info h3 {
-    font-size: 1.2rem;
+    width: 80px;
+    height: 80px;
   }
 
   .glass-panel {
     padding: 1rem;
-    border-radius: 12px;
-  }
-  
-  /* Make canvas responsive for Face Mesh */
-  canvas {
-    max-width: 100% !important;
-    height: auto !important;
-    border-radius: 12px;
   }
 
-  .video-container {
-    max-width: 100vw;
-    overflow: hidden;
+  .ehr-card {
+    padding: 1rem;
   }
-}
 
-/* Animations and Premium Upgrades */
-.glass-panel, .ehr-card {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.glass-panel:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 15px 40px rgba(0, 240, 255, 0.1), inset 0 0 20px rgba(0, 240, 255, 0.05);
-  border-color: rgba(0, 240, 255, 0.4);
+  .patient-info h3 {
+    font-size: 1.1rem;
+  }
 }
