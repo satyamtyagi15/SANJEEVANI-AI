@@ -99,10 +99,10 @@ const TouchlessVitals = ({ onComplete }) => {
           <p>{errorMsg}</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1.5rem', flex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', flex: 1 }}>
           
           {/* Main Video Feed Area */}
-          <div style={{ position: 'relative', background: 'var(--bg-dark)', borderRadius: '16px', border: '1px solid var(--glass-border)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: 'inset 0 0 50px rgba(0, 240, 255, 0.1)' }}>
+          <div style={{ position: 'relative', minHeight: '320px', background: 'var(--bg-dark)', borderRadius: '16px', border: '1px solid var(--glass-border)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: 'inset 0 0 50px rgba(0, 240, 255, 0.1)' }}>
             <video 
               ref={videoRef} 
               autoPlay 
