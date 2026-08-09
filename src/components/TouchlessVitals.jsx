@@ -58,7 +58,20 @@ const TouchlessVitals = ({ onComplete }) => {
           const mockBpm = bpmRef.current || 75;
           const mockPainIndex = Math.floor(Math.random() * 5) + (mockBpm > 100 ? 5 : 1);
           const boundedPain = Math.min(10, Math.max(1, mockPainIndex));
-          setTimeout(() => onComplete && onComplete(Math.floor(mockBpm), boundedPain), 4000);
+          
+          // Simulated Advanced Vitals Extraction
+          const respiratoryRate = Math.floor(mockBpm / 4.5); // Standard physiological ratio
+          const systolicBP = 110 + Math.floor(Math.random() * 20); // PTT derived mock
+          const diastolicBP = 70 + Math.floor(Math.random() * 15);
+          const temperatureF = (98.2 + Math.random() * 1.5).toFixed(1); // Thermal Camera mock
+          
+          const advancedVitals = {
+            respiratoryRate,
+            bloodPressure: `${systolicBP}/${diastolicBP}`,
+            temperature: `${temperatureF} °F`
+          };
+
+          setTimeout(() => onComplete && onComplete(Math.floor(mockBpm), boundedPain, advancedVitals), 4000);
           return 100;
         }
         return prev + 1; 

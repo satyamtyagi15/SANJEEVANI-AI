@@ -318,7 +318,7 @@ const PatientKiosk = ({ onTriageComplete }) => {
     }
   };
 
-  const handleVitalsComplete = async (bpm, painIndex) => {
+  const handleVitalsComplete = async (bpm, painIndex, advancedVitals = null) => {
     setIsProcessing(true);
     
     // Calculate dynamic wait time based on AI Priority
@@ -355,6 +355,7 @@ const PatientKiosk = ({ onTriageComplete }) => {
       ...currentTriageData,
       measuredBpm: bpm,
       visualPainIndex: painIndex,
+      advancedVitals: advancedVitals,
       estimatedWaitTime: waitTime,
       safetyReview: safetyReview,
       billingInfo: billingInfo,

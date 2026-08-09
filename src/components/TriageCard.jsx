@@ -505,18 +505,47 @@ const TriageCard = ({ data }) => {
               )}
             </div>
           </div>
-          <div className="vitals-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem', marginTop: '0.5rem' }}>
-            {data.vitalsToCheck.map((vital, i) => (
-              <div key={i} className="vital-item" style={{ padding: '0.6rem', background: 'var(--bg-elevated)', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#fff', fontSize: '0.9rem', fontWeight: '500' }}>
-                  <HeartPulse size={14} style={{ color: '#ef4444' }} /> {typeof vital === 'object' ? vital.name : vital}
+          {data.advancedVitals ? (
+            <div className="vitals-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.8rem', marginTop: '0.5rem' }}>
+              <div style={{ padding: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#fca5a5', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  <HeartPulse size={14} /> Heart Rate
                 </div>
-                {typeof vital === 'object' && vital.reason && (
-                  <span style={{ fontSize: '0.75rem', color: '#a1a1aa' }}>{vital.reason}</span>
-                )}
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#ef4444' }}>{data.measuredBpm} <span style={{ fontSize: '0.8rem', fontWeight: 'normal' }}>BPM</span></div>
               </div>
-            ))}
-          </div>
+              <div style={{ padding: '0.8rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#93c5fd', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  <Activity size={14} /> Blood Pressure
+                </div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#3b82f6' }}>{data.advancedVitals.bloodPressure} <span style={{ fontSize: '0.8rem', fontWeight: 'normal' }}>mmHg</span></div>
+              </div>
+              <div style={{ padding: '0.8rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.3)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#6ee7b7', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  <Activity size={14} /> Resp. Rate
+                </div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#10b981' }}>{data.advancedVitals.respiratoryRate} <span style={{ fontSize: '0.8rem', fontWeight: 'normal' }}>/min</span></div>
+              </div>
+              <div style={{ padding: '0.8rem', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.3)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#fcd34d', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  <Activity size={14} /> Temperature
+                </div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#f59e0b' }}>{data.advancedVitals.temperature}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="vitals-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem', marginTop: '0.5rem' }}>
+              {data.vitalsToCheck.map((vital, i) => (
+                <div key={i} className="vital-item" style={{ padding: '0.6rem', background: 'var(--bg-elevated)', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#fff', fontSize: '0.9rem', fontWeight: '500' }}>
+                    <HeartPulse size={14} style={{ color: '#ef4444' }} /> {typeof vital === 'object' ? vital.name : vital}
+                  </div>
+                  {typeof vital === 'object' && vital.reason && (
+                    <span style={{ fontSize: '0.75rem', color: '#a1a1aa' }}>{vital.reason}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="data-group original-transcript">
