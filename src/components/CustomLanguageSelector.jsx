@@ -94,6 +94,18 @@ const CustomLanguageSelector = ({ language, setLanguage, disabled }) => {
                   onClick={() => {
                     setLanguage(opt.code);
                     setIsOpen(false);
+                    
+                    // Trigger Google Translate engine
+                    try {
+                      const langCode = opt.code.split('-')[0]; // e.g. 'hi-IN' -> 'hi'
+                      const googleSelect = document.querySelector('.goog-te-combo');
+                      if (googleSelect) {
+                        googleSelect.value = langCode;
+                        googleSelect.dispatchEvent(new Event('change'));
+                      }
+                    } catch (e) {
+                      console.error("Translate error:", e);
+                    }
                   }}
                   style={{
                     padding: '0.6rem 1rem',

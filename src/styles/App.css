@@ -699,3 +699,10 @@ body {
     padding: 1.2rem;
   }
 }
+
+/* Hide Google Translate UI */
+.goog-te-banner-frame.skiptranslate { display: none !important; }
+body { top: 0px !important; }
+#goog-gt-tt { display: none !important; }
+.goog-text-highlight { background-color: transparent !important; box-shadow: none !important; }
+
