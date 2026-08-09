@@ -361,7 +361,8 @@ const PatientKiosk = ({ onTriageComplete }) => {
       billingInfo: billingInfo,
       allergyAlert: allergyAlert,
       location: patientLocation,
-      coords: patientCoords
+      coords: patientCoords,
+      visualFindings: visualFindings
     };
     
     setIsProcessing(false);

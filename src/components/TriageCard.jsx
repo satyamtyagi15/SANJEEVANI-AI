@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Activity, AlertTriangle, CheckCircle, Clock, HeartPulse, Stethoscope, HelpCircle, ShieldAlert, ClipboardList, FileText, CheckSquare, Edit2, Check, DollarSign, AlertOctagon, Volume2, BookOpen, QrCode, X, Save, Download } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle, Clock, HeartPulse, Stethoscope, HelpCircle, ShieldAlert, ClipboardList, FileText, CheckSquare, Edit2, Check, DollarSign, AlertOctagon, Volume2, BookOpen, QrCode, X, Save, Download, Camera } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import PharmacyPrescriptionWidget from './PharmacyPrescriptionWidget';
 import AnatomicalHeatmap from './AnatomicalHeatmap';
@@ -416,6 +416,17 @@ const TriageCard = ({ data }) => {
             </div>
           )}
 
+
+          {data.visualFindings && (
+            <div className="data-group" style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', marginBottom: '1rem' }}>
+              <h4 style={{ color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Camera size={16} /> Computer Vision Scan (Agent 7)
+              </h4>
+              <p style={{ margin: '0.5rem 0 0 0', color: '#e5e7eb', fontSize: '0.9rem', fontStyle: 'italic' }}>
+                "{data.visualFindings}"
+              </p>
+            </div>
+          )}
 
           {data.pastMedicalHistory && (
             <div className="data-group" style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
