@@ -701,8 +701,12 @@ body {
 }
 
 /* Hide Google Translate UI */
-.goog-te-banner-frame.skiptranslate { display: none !important; }
-body { top: 0px !important; }
+iframe.goog-te-banner-frame { display: none !important; }
+.goog-te-banner-frame { display: none !important; visibility: hidden !important; }
+.VIpgJd-Zvi9od-aZ2wEe-wOHMyf { display: none !important; visibility: hidden !important; }
+.skiptranslate > iframe { display: none !important; visibility: hidden !important; }
+body { top: 0px !important; position: static !important; }
+html { top: 0px !important; position: static !important; }
 #goog-gt-tt { display: none !important; }
 .goog-text-highlight { background-color: transparent !important; box-shadow: none !important; }
 
