@@ -1,6 +1,6 @@
 // Using the OpenRouter API Key provided by the user (with fallback)
 const p1 = "sk-or-v1-";
-const p2 = "e88595895bcfc40899d955708e4fade451e3033ba47ddf423be0685826682c21";
+const p2 = "5496c045d59598d0fc828cdc1f038d740c6202e2b487ced905d39bb500bf3466";
 const apiKey = p1 + p2;
 
 
