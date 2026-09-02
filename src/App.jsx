@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Stethoscope, Mic, Pill, ScanEye, Users, Activity, Dna, Palette, Camera, ShieldCheck, Database, Menu, X } from 'lucide-react';
+import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
+import { SignIn } from "@clerk/clerk-react";
 import PatientKiosk from './components/PatientKiosk';
 import DoctorDashboard from './components/DoctorDashboard';
 import EpidemicAlert from './components/EpidemicAlert';
@@ -46,8 +48,21 @@ function App() {
   };
 
   return (
-    <div className="super-app-layout">
-      {/* Mobile Nav Toggle Header */}
+    <>
+      <AuthLoading>
+        <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#0f172a', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
+          <div style={{ width: '40px', height: '40px', border: '3px solid #3b82f6', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        </div>
+      </AuthLoading>
+      <Unauthenticated>
+        <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#0f172a' }}>
+          <SignIn routing="hash" appearance={{ elements: { rootBox: { margin: 'auto' } } }} />
+        </div>
+      </Unauthenticated>
+      <Authenticated>
+        <div className="super-app-layout">
+          {/* Mobile Nav Toggle Header */}
       <div className="mobile-nav-header">
         <div className="mobile-logo">
           <h1>SANJEEVANI</h1>
@@ -145,6 +160,8 @@ function App() {
         )}
       </main>
     </div>
+      </Authenticated>
+    </>
   );
 }
 
