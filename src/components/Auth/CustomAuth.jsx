@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { useCustomAuth } from '../../context/AuthContext';
-import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { Mail, Lock, CheckCircle, XCircle, User, Activity } from 'lucide-react';
-import { jwtDecode } from "jwt-decode";
 import '../../styles/App.css'; // inherit sci-fi styling
 
 export default function CustomAuth() {
@@ -18,7 +16,6 @@ export default function CustomAuth() {
   const { login } = useCustomAuth();
   const signUpMutation = useMutation(api.auth.signUp);
   const loginMutation = useMutation(api.auth.login);
-  const googleLoginMutation = useMutation(api.auth.googleLogin);
 
   // Password validation rules (Instagram exact rules)
   const hasMinLength = password.length >= 6;
@@ -31,14 +28,7 @@ export default function CustomAuth() {
     e.preventDefault();
     setError('');
     try {
-      if (needsGooglePassword) {
-        if (!isValidPassword) {
-          setError("Please satisfy all password rules.");
-          return;
-        }
-        const res = await signUpMutation({ email, password, name });
-        login(res.token);
-      } else if (isLogin) {
+      if (isLogin) {
         const res = await loginMutation({ email, password });
         login(res.token);
       } else {
@@ -46,29 +36,16 @@ export default function CustomAuth() {
           setError("Please satisfy all password rules.");
           return;
         }
-        const res = await signUpMutation({ email, password, name });
-        login(res.token);
+        await signUpMutation({ email, password, name });
+        // Force manual login after signup
+        setIsLogin(true);
+        setPassword('');
+        setError("Account created successfully! Please sign in.");
       }
     } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const handleGoogleSuccess = async (credentialResponse) => {
-    try {
-      const decoded = jwtDecode(credentialResponse.credential);
-      const res = await googleLoginMutation({ email: decoded.email, name: decoded.name });
-      
-      if (res.status === "logged_in") {
-        login(res.token);
-      } else if (res.status === "needs_password") {
-        setEmail(decoded.email);
-        setName(decoded.name || '');
-        setNeedsGooglePassword(true);
-        setIsLogin(false);
-      }
-    } catch (err) {
-      setError(err.message);
+      // Clean up ConvexError message
+      const errMsg = err.data || err.message || "An error occurred";
+      setError(errMsg);
     }
   };
 
@@ -118,36 +95,16 @@ export default function CustomAuth() {
           )}
 
           <button type="submit" style={{ background: '#3b82f6', color: '#fff', padding: '0.75rem', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s' }}>
-            {needsGooglePassword ? "Complete Signup" : (isLogin ? "Sign In" : "Sign Up")}
+            {isLogin ? "Sign In" : "Sign Up"}
           </button>
         </form>
 
-        {!needsGooglePassword && (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0' }}>
-              <div style={{ flex: 1, height: '1px', background: '#334155' }}></div>
-              <span style={{ margin: '0 1rem', color: '#64748b', fontSize: '0.8rem' }}>OR</span>
-              <div style={{ flex: 1, height: '1px', background: '#334155' }}></div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-               <GoogleOAuthProvider clientId="787459168867-0v2orf3qo56uocsi84iroscoahhuovdm.apps.googleusercontent.com">
-                 <GoogleLogin
-                   onSuccess={handleGoogleSuccess}
-                   onError={() => setError('Google Login Failed')}
-                   useOneTap
-                 />
-               </GoogleOAuthProvider>
-            </div>
-
-            <div style={{ textAlign: 'center', fontSize: '0.875rem', color: '#94a3b8' }}>
-              {isLogin ? "Don't have an account? " : "Already have an account? "}
-              <span onClick={() => { setIsLogin(!isLogin); setError(''); }} style={{ color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline' }}>
-                {isLogin ? "Sign up" : "Sign in"}
-              </span>
-            </div>
-          </>
-        )}
+        <div style={{ textAlign: 'center', fontSize: '0.875rem', color: '#94a3b8', marginTop: '1.5rem' }}>
+          {isLogin ? "Don't have an account? " : "Already have an account? "}
+          <span onClick={() => { setIsLogin(!isLogin); setError(''); }} style={{ color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline' }}>
+            {isLogin ? "Sign up" : "Sign in"}
+          </span>
+        </div>
       </div>
     </div>
   );

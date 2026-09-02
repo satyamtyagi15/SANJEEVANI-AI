@@ -1,14 +1,14 @@
 import { mutation, query } from "./_generated/server";
 import { api } from "./_generated/api";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 
 // Helper to check if a user is admin
 const requireAdmin = async (ctx, token) => {
-  if (!token) throw new Error("Unauthorized");
+  if (!token) throw new ConvexError("Unauthorized");
   const session = await ctx.db.query("sessions").withIndex("by_token", q => q.eq("token", token)).unique();
-  if (!session) throw new Error("Invalid session");
+  if (!session) throw new ConvexError("Invalid session");
   const user = await ctx.db.get(session.userId);
-  if (!user || user.role !== "developer") throw new Error("Forbidden: Not a developer");
+  if (!user || user.role !== "developer") throw new ConvexError("Forbidden: Not a developer");
   return user;
 };
 
@@ -27,7 +27,7 @@ export const signUp = mutation({
   args: { email: v.string(), password: v.string(), name: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const existing = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", args.email)).unique();
-    if (existing) throw new Error("User already exists");
+    if (existing) throw new ConvexError("Email is already registered. Please sign in instead.");
     
     // Developer account check
     const role = args.email === "satyamtyagiji15@gmail.com" ? "developer" : "user";
@@ -59,9 +59,9 @@ export const login = mutation({
   args: { email: v.string(), password: v.string() },
   handler: async (ctx, args) => {
     const user = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", args.email)).unique();
-    if (!user) throw new Error("Invalid email or password");
-    if (user.password !== args.password) throw new Error("Invalid email or password");
-    if (user.isBanned) throw new Error("Account has been banned by the developer");
+    if (!user) throw new ConvexError("Invalid email or password");
+    if (user.password !== args.password) throw new ConvexError("Invalid email or password");
+    if (user.isBanned) throw new ConvexError("Account has been banned by the developer");
     
     const token = crypto.randomUUID();
     await ctx.db.insert("sessions", { userId: user._id, token, createdAt: Date.now() });
@@ -76,7 +76,7 @@ export const googleLogin = mutation({
   handler: async (ctx, args) => {
     let user = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", args.email)).unique();
     if (user) {
-      if (user.isBanned) throw new Error("Account has been banned by the developer");
+      if (user.isBanned) throw new ConvexError("Account has been banned by the developer");
       const token = crypto.randomUUID();
       await ctx.db.insert("sessions", { userId: user._id, token, createdAt: Date.now() });
       return { status: "logged_in", token, role: user.role };
@@ -122,7 +122,7 @@ export const banUser = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx, args.adminToken);
     const user = await ctx.db.get(args.targetUserId);
-    if (user.role === "developer") throw new Error("Cannot ban a developer");
+    if (user.role === "developer") throw new ConvexError("Cannot ban a developer");
     await ctx.db.patch(args.targetUserId, { isBanned: !user.isBanned });
   }
 });
@@ -132,7 +132,7 @@ export const deleteUserAccount = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx, args.adminToken);
     const user = await ctx.db.get(args.targetUserId);
-    if (user.role === "developer") throw new Error("Cannot delete a developer");
+    if (user.role === "developer") throw new ConvexError("Cannot delete a developer");
     // Delete their sessions
     const sessions = await ctx.db.query("sessions").filter(q => q.eq(q.field("userId"), args.targetUserId)).collect();
     for (const s of sessions) {

@@ -10,6 +10,7 @@
 
 import type * as auth from "../auth.js";
 import type * as email from "../email.js";
+import type * as feedback from "../feedback.js";
 import type * as patients from "../patients.js";
 import type * as records from "../records.js";
 
@@ -22,6 +23,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   email: typeof email;
+  feedback: typeof feedback;
   patients: typeof patients;
   records: typeof records;
 }>;

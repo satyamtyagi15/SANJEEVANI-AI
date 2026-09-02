@@ -23,7 +23,7 @@ export const sendWelcomeEmail = action({
         body: JSON.stringify({
           sender: {
             name: "Sanjeevani AI",
-            email: "noreply@sanjeevaniai.com" // Update this if you have a verified domain in Brevo
+            email: "satyamtyagiji15@gmail.com" // Verified domain in Brevo
           },
           to: [
             {

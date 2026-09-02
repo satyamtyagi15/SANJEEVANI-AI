@@ -44,4 +44,12 @@ export default defineSchema({
     token: v.string(),
     createdAt: v.number(),
   }).index("by_token", ["token"]),
+
+  feedbacks: defineTable({
+    userId: v.id("users"),
+    message: v.string(),
+    status: v.string(), // "pending" | "resolved"
+    adminReply: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_userId", ["userId"]).index("by_status", ["status"]),
 });
