@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import React, { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { useCustomAuth } from '../../context/AuthContext';
