@@ -20,7 +20,6 @@ import CustomAlert from './components/CustomAlert';
 import PatientFollowUp from './components/PatientFollowUp';
 import GuardianDashboard from './components/GuardianDashboard';
 import PatientRecords from './components/PatientRecords';
-import ChatInterface from './components/ChatInterface';
 import { epidemicService } from './services/EpidemicService';
 import './styles/App.css';
 
@@ -31,7 +30,6 @@ function App() {
   const [followUpPatientId, setFollowUpPatientId] = useState(null);
   const [outbreakData, setOutbreakData] = useState(null);
   const [isNavOpen, setIsNavOpen] = useState(false);
-  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
 
@@ -197,14 +195,6 @@ function App() {
         
         {followUpPatientId && (
           <PatientFollowUp patientId={followUpPatientId} onClose={() => setFollowUpPatientId(null)} />
-        )}
-
-        {isCopilotOpen && (
-          <ChatInterface
-            agentName="Medical Co-Pilot"
-            agentRole="Clinical Decision Support"
-            onClose={() => setIsCopilotOpen(false)}
-          />
         )}
 
         <button 
