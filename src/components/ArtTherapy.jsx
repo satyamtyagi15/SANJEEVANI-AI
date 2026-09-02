@@ -48,10 +48,12 @@ const ArtTherapy = () => {
       const analysis = await analyzeArtTherapyEmotion(prompt);
       setAiReport(analysis);
       
-      // 2. Generate Image via free Pollinations API using the exact literal user prompt directly
-      // This bypasses any AI censorship and forces a 100% literal hyper-realistic render
-      const finalUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt + " hyper-realistic, 8k resolution, cinematic, photorealistic, highly detailed")}?width=1024&height=1024&nologo=true&model=flux&seed=${Math.floor(Math.random() * 1000)}`;
+      // 2. Generate Image via free Pollinations API using an advanced therapeutic prompt based on AI analysis
+      // This ensures the image is a healing, metaphorical artwork rather than a literal raw image of trauma
+      const colorString = analysis.colorPalette ? analysis.colorPalette.join(', ') : 'calming and soothing colors';
+      const therapeuticPrompt = `A soothing, therapeutic, and metaphorical digital painting symbolizing emotional healing, mental clarity, and overcoming negative thoughts. Psychological theme: "${analysis.insight}". Healing color palette: ${colorString}. Ethereal, hyper-realistic, 8k resolution, cinematic lighting, visually comforting, masterpiece of art therapy, serene atmosphere.`;
       
+      const finalUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(therapeuticPrompt)}?width=1024&height=1024&nologo=true&model=flux&seed=${Math.floor(Math.random() * 1000)}`;      
       // 3. Pre-load the image to show spinner until ready
       const img = new Image();
       img.src = finalUrl;

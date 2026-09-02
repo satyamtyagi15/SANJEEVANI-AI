@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Stethoscope, Mic, Pill, ScanEye, Users, Activity, Dna, Palette, Camera, ShieldCheck, Database, Menu, X } from 'lucide-react';
-import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
-import { SignIn } from "@clerk/clerk-react";
+import { Stethoscope, Mic, Pill, ScanEye, Users, Activity, Dna, Palette, Camera, ShieldCheck, Database, Menu, X, LogOut, Code } from 'lucide-react';
+import { useCustomAuth } from './context/AuthContext';
+import CustomAuth from './components/Auth/CustomAuth';
+import DeveloperDashboard from './components/Admin/DeveloperDashboard';
 import PatientKiosk from './components/PatientKiosk';
 import DoctorDashboard from './components/DoctorDashboard';
 import EpidemicAlert from './components/EpidemicAlert';
@@ -21,6 +22,7 @@ import { epidemicService } from './services/EpidemicService';
 import './styles/App.css';
 
 function App() {
+  const { isAuthenticated, isLoaded, user, logout } = useCustomAuth();
   const [activeModule, setActiveModule] = useState('triage');
   const [triageQueue, setTriageQueue] = useState([]);
   const [followUpPatientId, setFollowUpPatientId] = useState(null);
@@ -47,22 +49,42 @@ function App() {
     if (outbreakResult) setOutbreakData(outbreakResult);
   };
 
+  if (!isLoaded) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#0f172a', color: '#fff' }}>
+        <div style={{ width: '40px', height: '40px', border: '3px solid #3b82f6', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <CustomAuth />;
+  }
+
+  if (user?.role === 'developer' && activeModule === 'developer') {
+    return (
+      <div className="super-app-layout">
+        <nav className="sci-fi-sidebar open">
+          <div className="sidebar-logo">
+            <h1>ADMIN</h1>
+          </div>
+          <ul className="nav-menu">
+            <li className="active"><Code size={20}/> <span>Dashboard</span></li>
+            <li onClick={() => setActiveModule('triage')}><Stethoscope size={20}/> <span>Back to App</span></li>
+            <li onClick={logout}><LogOut size={20} color="#f87171" /> <span style={{color: '#f87171'}}>Logout</span></li>
+          </ul>
+        </nav>
+        <main className="module-content" style={{ padding: 0 }}>
+          <DeveloperDashboard />
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <>
-      <AuthLoading>
-        <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#0f172a', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
-          <div style={{ width: '40px', height: '40px', border: '3px solid #3b82f6', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-        </div>
-      </AuthLoading>
-      <Unauthenticated>
-        <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#0f172a' }}>
-          <SignIn routing="hash" appearance={{ elements: { rootBox: { margin: 'auto' } } }} />
-        </div>
-      </Unauthenticated>
-      <Authenticated>
-        <div className="super-app-layout">
-          {/* Mobile Nav Toggle Header */}
+    <div className="super-app-layout">
+      {/* Mobile Nav Toggle Header */}
       <div className="mobile-nav-header">
         <div className="mobile-logo">
           <h1>SANJEEVANI</h1>
@@ -116,6 +138,14 @@ function App() {
           <li className={activeModule === 'pain-tracker' ? 'active' : ''} onClick={() => { setActiveModule('pain-tracker'); setIsNavOpen(false); }}>
             <Camera size={20} /> <span>Pain Tracker</span>
           </li>
+          {user?.role === 'developer' && (
+            <li className={activeModule === 'developer' ? 'active' : ''} onClick={() => { setActiveModule('developer'); setIsNavOpen(false); }}>
+              <Code size={20} color="#fcd34d" /> <span style={{ color: '#fcd34d' }}>Dev Dashboard</span>
+            </li>
+          )}
+          <li onClick={logout}>
+            <LogOut size={20} color="#f87171" /> <span style={{ color: '#f87171' }}>Logout</span>
+          </li>
         </ul>
         
         <div className="system-status">
@@ -160,8 +190,6 @@ function App() {
         )}
       </main>
     </div>
-      </Authenticated>
-    </>
   );
 }
 

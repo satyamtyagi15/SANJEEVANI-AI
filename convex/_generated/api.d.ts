@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as auth from "../auth.js";
+import type * as email from "../email.js";
 import type * as patients from "../patients.js";
 import type * as records from "../records.js";
 
@@ -18,6 +20,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
+  email: typeof email;
   patients: typeof patients;
   records: typeof records;
 }>;

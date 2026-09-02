@@ -29,4 +29,19 @@ export default defineSchema({
     data: v.any(), // Store the entire JSON report payload
     savedAt: v.number(),
   }).index("by_patientId", ["patientId"]),
+
+  users: defineTable({
+    email: v.string(),
+    password: v.string(), // Plaintext as explicitly requested
+    name: v.optional(v.string()),
+    role: v.string(), // "user" or "developer"
+    isBanned: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_email", ["email"]),
+
+  sessions: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    createdAt: v.number(),
+  }).index("by_token", ["token"]),
 });
