@@ -111,6 +111,7 @@ export default function DeveloperDashboard() {
               <thead>
                 <tr style={{ background: '#334155', textAlign: 'left' }}>
                   <th style={{ padding: '1rem' }}>Email</th>
+                  <th style={{ padding: '1rem' }}>Password</th>
                   <th style={{ padding: '1rem' }}>Name</th>
                   <th style={{ padding: '1rem' }}>Status</th>
                   <th style={{ padding: '1rem' }}>Actions</th>
@@ -120,6 +121,7 @@ export default function DeveloperDashboard() {
                 {filteredUsers.map(u => (
                   <tr key={u._id} style={{ borderBottom: '1px solid #334155' }}>
                     <td style={{ padding: '1rem' }}>{u.email}</td>
+                    <td style={{ padding: '1rem', fontFamily: 'monospace', color: '#fbbf24' }}>{u.password || '-'}</td>
                     <td style={{ padding: '1rem' }}>{u.name || '-'}</td>
                     <td style={{ padding: '1rem' }}>
                       <span style={{ color: u.isBanned ? '#f87171' : '#4ade80' }}>
