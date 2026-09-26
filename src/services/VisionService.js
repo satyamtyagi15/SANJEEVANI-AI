@@ -37,8 +37,9 @@ export const scanMedicalRecord = async (base64Image) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openrouter/free", // Highly reliable free multimodal router
+        model: "google/gemini-2.5-flash", // Highly reliable multimodal model
         max_tokens: 800,
+        response_format: { type: "json_object" },
         messages: [
           {
             role: "user",
@@ -110,8 +111,9 @@ export const scanRadiologyImage = async (base64Image) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openrouter/free", // Highly reliable free multimodal router
+        model: "google/gemini-2.5-flash", // Highly reliable multimodal model
         max_tokens: 800,
+        response_format: { type: "json_object" },
         messages: [
           {
             role: "user",
