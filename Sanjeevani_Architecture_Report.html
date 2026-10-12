@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SANJEEVANI AI - Detailed Workflow & System Architecture</title>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --panel: #111827;
+        --panel-2: #172033;
+        --text: #e5edf8;
+        --sub: #b9c7df;
+        --muted: #90a3c0;
+        --blue: #60a5fa;
+        --green: #34d399;
+        --cyan: #22d3ee;
+        --purple: #a78bfa;
+        --red: #f87171;
+        --gold: #fbbf24;
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        background: linear-gradient(180deg, #0a1120 0%, #0f172a 100%);
+        color: var(--text);
+        line-height: 1.7;
+      }
+
+      .page {
+        max-width: 1100px;
+        margin: 24px auto;
+        background: rgba(17, 24, 39, 0.96);
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        border-radius: 18px;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.38);
+        padding: 42px 48px;
+      }
+
+      .cover {
+        text-align: center;
+        padding: 36px 30px 48px;
+        border-bottom: 1px solid rgba(148,163,184,0.2);
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(96, 165, 250, 0.18);
+        border: 1px solid rgba(96, 165, 250, 0.5);
+        color: var(--blue);
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        margin-bottom: 12px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 38px;
+        letter-spacing: 0.04em;
+      }
+
+      h2 {
+        margin-top: 30px;
+        margin-bottom: 14px;
+        color: #edf6ff;
+        font-size: 26px;
+        border-bottom: 2px solid rgba(96,165,250,0.35);
+        padding-bottom: 8px;
+      }
+
+      h3 {
+        margin: 18px 0 10px;
+        color: #dfeaff;
+        font-size: 21px;
+      }
+
+      p, li {
+        color: var(--sub);
+        font-size: 15px;
+      }
+
+      ul, ol {
+        padding-left: 24px;
+      }
+
+      .meta {
+        color: var(--muted);
+        margin-top: 10px;
+        font-size: 13px;
+      }
+
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(160px, 1fr));
+        gap: 14px;
+        margin: 24px 0 30px;
+      }
+
+      .kpi {
+        background: linear-gradient(180deg, rgba(17,24,39,0.95), rgba(18,31,46,0.95));
+        border: 1px solid rgba(148,163,184,0.25);
+        border-radius: 12px;
+        padding: 18px;
+      }
+
+      .kpi strong {
+        display: block;
+        font-size: 24px;
+        color: var(--cyan);
+        margin-bottom: 4px;
+      }
+
+      .diagram-box {
+        margin: 24px 0 10px;
+        background: rgba(10, 15, 25, 0.8);
+        border: 1px dashed rgba(96,165,250,0.4);
+        border-radius: 12px;
+        padding: 18px;
+      }
+
+      .diagram-box pre {
+        white-space: pre-wrap;
+        margin: 0;
+        color: #dbf3ff;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 18px 0 24px;
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid rgba(148,163,184,0.22);
+      }
+
+      .table th, .table td {
+        border: 1px solid rgba(148,163,184,0.18);
+        padding: 12px 14px;
+        vertical-align: top;
+        text-align: left;
+      }
+
+      .table th {
+        background: rgba(96, 165, 250, 0.12);
+        color: #dfeeff;
+      }
+
+      .code {
+        background: rgba(2, 6, 23, 0.85);
+        border: 1px solid rgba(148,163,184,0.2);
+        border-radius: 10px;
+        padding: 12px 14px;
+        overflow: auto;
+        font-size: 13px;
+        color: #d9f5ff;
+      }
+
+      .footer-note {
+        margin-top: 36px;
+        font-size: 12px;
+        color: var(--muted);
+        border-top: 1px solid rgba(148,163,184,0.2);
+        padding-top: 12px;
+      }
+
+      @media print {
+        body { background: white; }
+        .page {
+          box-shadow: none;
+          border: none;
+          margin: 0;
+          max-width: none;
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="cover">
+        <div class="badge">Clinical AI Operating System</div>
+        <h1>SANJEEVANI AI</h1>
+        <div class="meta">Detailed Workflow &amp; System Architecture</div>
+        <div class="meta">Repository: satyamtyagi15/SANJEEVANI-AI</div>
+        <div class="meta">Prepared as a technical workflow report for architecture review</div>
+      </div>
+
+      <section>
+        <h2>1. Executive Summary</h2>
+        <p>
+          SANJEEVANI AI is designed as a clinical edge intelligence platform focused on emergency triage,
+          patient monitoring, multimodal symptom detection, AI-assisted diagnosis, and proactive medical guidance.
+          From the repository evidence, the project is a React-based front-end application with strong browser-side processing,
+          a Convex backend for patient data persistence and auth, and a multi-module AI architecture that brings together:
+        </p>
+        <ul>
+          <li>Vision-based patient analysis using MediaPipe and TensorFlow.js</li>
+          <li>Audio-based distress and vocal pattern analysis</li>
+          <li>Care-plan generation and AI medical agent orchestration</li>
+          <li>Pharmacovigilance and drug-interaction analysis</li>
+          <li>Genomic and disease-risk scanning context</li>
+          <li>Epidemic monitoring and outbreak alert logic</li>
+        </ul>
+        <p>
+          In practical terms, the system behaves like a healthcare command center: a front-end patient intake and triage layer,
+          a clinician dashboard, a multimodal AI analysis engine, and an underlying secure data layer. The system is architected
+          to keep some sensitive patient processing local in the browser while pushing reasoning and retrieval tasks through AI APIs.
+        </p>
+      </section>
+
+      <section>
+        <h2>2. System at a Glance</h2>
+        <div class="kpi-grid">
+          <div class="kpi"><strong>React 19</strong>Frontend core and UI rendering</div>
+          <div class="kpi"><strong>Vite</strong>Fast modern build and dev environment</div>
+          <div class="kpi"><strong>Convex</strong>Realtime backend + auth + data layer</div>
+          <div class="kpi"><strong>MediaPipe</strong>Face mesh and landmark analysis</div>
+          <div class="kpi"><strong>TensorFlow.js</strong>Vision ML inference</div>
+          <div class="kpi"><strong>OpenRouter</strong>AI model routing and LLM orchestration</div>
+        </div>
+      </section>
+
+      <section>
+        <h2>3. High-Level Architecture</h2>
+        <p>
+          The architecture follows a layered design where the application sits at the clinician/patient interaction layer,
+          data passes through a state-aware control layer, and AI reasoning runs across distinct specializations.
+        </p>
+        <div class="diagram-box">
+          <pre>[Patient / User Input]
+           |
+           v
+[Browser Frontend: React + Vite]
+   |-- Auth + User Session
+   |-- Patient Kiosk and Triage Flow
+   |-- Vision AI Module
+   |-- Audio / Speech / Distress Analysis
+   |-- AI Multi-Agent Orchestration
+   |-- Pharma / Genomic / Epidemic / Guardian Modules
+   v
+[Convex Backend / Data Layer]
+   |-- Patient records
+   |-- Feedback and admin replies
+   |-- Auth and token-based session management
+   v
+[External AI Edge / APIs]
+   |-- OpenRouter model invocations
+   |-- Clinical reasoning and narrative outputs
+   |-- Structured recommendations / risk alerts
+   v
+[User / Doctor Dashboards]
+   |-- Patient summary
+   |-- Vital signals
+   |-- Risks and treatment recommendation</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2>4. Repository Structure and Functional Mapping</h2>
+        <table class="table">
+          <thead>
+            <tr><th>Area</th><th>Purpose</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>src/App.jsx</td><td>Main orchestrator: navigation, module selection, feedback handling, patient follow-up handling.</td></tr>
+            <tr><td>src/main.jsx</td><td>Application bootstrap; Convex provider and Auth provider are mounted here.</td></tr>
+            <tr><td>src/context/AuthContext.jsx</td><td>User authentication state and token lifecycle.</td></tr>
+            <tr><td>src/components/</td><td>Feature modules such as triage, pharma, genomic, vision, auto-scribe, digital twin, etc.</td></tr>
+            <tr><td>src/services/</td><td>AI, vision, epidemic, rPPG, pharmacy and report generation services.</td></tr>
+            <tr><td>convex/</td><td>Server side logic, auth, patient records, feedback APIs, schema definitions.</td></tr>
+            <tr><td>public/</td><td>Static frontend assets and public deployment resources.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>5. Startup and Runtime Flow</h2>
+        <p>The app starts in the browser through <span class="code">src/main.jsx</span>. It creates a Convex client and wraps the app in both the auth provider and convex provider.</p>
+        <div class="code">
+import ReactDOM from 'react-dom/client';
+import App from './App.jsx';
+import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { AuthProvider } from './context/AuthContext';
+
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL || "https://...");
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  &lt;React.StrictMode&gt;
+    &lt;ConvexProvider client={convex}&gt;
+      &lt;AuthProvider&gt;
+        &lt;App /&gt;
+      &lt;/AuthProvider&gt;
+    &lt;/ConvexProvider&gt;
+  &lt;/React.StrictMode&gt;
+)
+        </div>
+        <p>
+          This means the front end is tightly integrated with a session-aware backend, not a static-only app. The frontend controls
+          modules, receives user identity information, and loads patient records and AI outputs from Convex functions.
+        </p>
+      </section>
+
+      <section>
+        <h2>6. App-Level Control Flow</h2>
+        <p>
+          The primary orchestrator is <span class="code">src/App.jsx</span>. It handles user authentication, side navigation,
+          active module switching, triage queue state, outbreak alerts, patient follow-up scheduling, and feedback submission.
+        </p>
+        <ul>
+          <li>On initial load, it checks auth state and shows a login screen if not authenticated.</li>
+          <li>It stores triage queue items in React state as the patient is processed.</li>
+          <li>It invokes epidemic logic whenever a new triage case is submitted.</li>
+          <li>It uses route-like module state to switch UI between emergency triage, records, pharma, vision, multi-agent AI, etc.</li>
+          <li>It supports a feedback modal that pushes developer feedback into the Convex backend.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>7. Frontend Module Architecture</h2>
+        <table class="table">
+          <thead>
+            <tr><th>Module</th><th>Clinical Role</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>PatientKiosk</td><td>Primary intake and symptom collection.</td></tr>
+            <tr><td>DoctorDashboard</td><td>Clinical review panel for triage queue and ongoing cases.</td></tr>
+            <tr><td>AutoScribe</td><td>Clinical note generation and transcription assistance.</td></tr>
+            <tr><td>PharmaAI</td><td>Drug interaction, contraindication, allergy risk analysis.</td></tr>
+            <tr><td>VisionAI</td><td>General computer vision inspection and analysis.</td></tr>
+            <tr><td>MultiAgent</td><td>Specialist-agent debate and diagnosis assembly.</td></tr>
+            <tr><td>DigitalTwin</td><td>Patient digital-twin state simulation and tracking.</td></tr>
+            <tr><td>GenomicScanner</td><td>Variant and gene-level medical risk scanning.</td></tr>
+            <tr><td>ArtTherapy</td><td>Art-based psychological interpretation and therapy insight.</td></tr>
+            <tr><td>PainTracker</td><td>Facial feature, stress, pain, and stress-pattern mapping.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>8. Core Clinical Intelligence Flow</h2>
+        <p>
+          The true system is not just a dashboard; it is a multimodal interpretation system. The README and component names suggest
+          that several engines work in parallel before a patient is classified or a recommendation is formed:
+        </p>
+        <ol>
+          <li>Patient enters symptoms or receives a triage assessment.</li>
+          <li>Browser captures images/audio/speech context via camera and microphone APIs.</li>
+          <li>Facial landmarks and vocal features are transformed into quantitative stress, pain, or distress scores.</li>
+          <li>These scores are fused into a multimodal patient state representation.</li>
+          <li>AI agents determine which specialists are relevant to the case.</li>
+          <li>Generated outputs are structured as clinical notes, recommendations, and risk flags.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>9. Vision Layer and Computer Vision</h2>
+        <p>
+          This project depends heavily on face-based and motion-based sensing. The package includes face detection and face mesh libs,
+          plus MediaPipe face detection and TF.js models. The architecture points clearly to two major vision styles:
+        </p>
+        <ul>
+          <li>Face landmark extraction for emotion, stress, and pain inference</li>
+          <li>Real-time video frames for remote vitals and facial micro-expression observation</li>
+        </ul>
+        <p>
+          The README specifically calls out rPPG (remote photoplethysmography), facial distress detection, and touchless vital estimation.
+          This is a strong signal that the project tries to estimate physiology from visual signals alone rather than relying on raw clinical devices.
+        </p>
+      </section>
+
+      <section>
+        <h2>10. Audio + Voice Analysis</h2>
+        <p>
+          The project also contains a speech/distress analysis layer using the browser Web Audio API and FFT processing. This is especially relevant
+          for pain, agitation, crying, screaming, or panic detection. In clinical terms, the system can quantify audio signatures and blend them
+          with facial data to improve distress scoring.
+        </p>
+        <div class="diagram-box">
+          <pre>Microphone Input
+      |
+      v
+Web Audio API + FFT
+      |
+      v
+Frequency energy and amplitude analysis
+      |
+      +--> Distress score
+      +--> Voice anomaly inference
+      +--> Combined signal with face model</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2>11. Multimodal Fusion</h2>
+        <p>
+          The most important conceptual layer is the fusion of multiple signals into one patient state. Instead of taking just one AI answer,
+          the application synthesizes face, voice, symptoms, and medication context to generate a more complete patient profile.
+        </p>
+        <p>
+          This pattern is consistent with the README’s emphasis on: “multimodal pain engine”, “synergistic max-pooling algorithm”, and “real-time
+          anatomical heatmap” behavior. The system is not designed as a simple chatbot; it is designed as a perception + reasoning engine for clinical use.
+        </p>
+      </section>
+
+      <section>
+        <h2>12. AI Agent and Multi-Agent Architecture</h2>
+        <p>
+          The README and App module names strongly indicate a multi-agent design. A central logic layer interprets the clinical event,
+          then activates relevant specialists. This resembles a medical board or panel of expert AIs, each focusing on a different diagnostic area.
+        </p>
+        <ul>
+          <li>Cardiology / heart-related risk</li>
+          <li>Toxicology / drug interactions</li>
+          <li>Neurology / brain or CNS clues</li>
+          <li>Pharmacology / medication contraindications</li>
+          <li>Psychiatry / trauma and behavioral interpretation</li>
+          <li>Emergency medicine / triage decisions</li>
+        </ul>
+        <p>
+          The benefit is better uncertainty reduction: one AI may be confident but wrong; the swarm-style board adds cross-checking and challenge.
+        </p>
+      </section>
+
+      <section>
+        <h2>13. Pharmacovigilance and Medication Safety</h2>
+        <p>
+          The Pharma AI module is central to the safety story. It likely checks active prescriptions, allergies, and contraindications before suggesting treatment.
+          The architecture fits a healthcare safety model where the system does not simply answer a question; it guards against hazardous medication combinations.
+        </p>
+        <p>
+          The corresponding service names and README describe direct clinical logic for cross-referencing drug names, patient allergy history, and risk patterns.
+          This is a strong indicator that the project treats AI as a medication safety assistant, not only a chatbot.
+        </p>
+      </section>
+
+      <section>
+        <h2>14. Genomic and Disease Risk Layer</h2>
+        <p>
+          The genomics module suggests a precision medicine angle. The codebase includes a genomic scanner, variant scanning concepts,
+          and CRISPR-like mutation analysis vocabulary. The design uses patient DNA sequences or risk context to propose actionable risk signals.
+        </p>
+        <p>
+          This is useful in an AI clinical platform because it helps connect phenotype to hereditary vulnerability. It is likely intended to inform:
+        </p>
+        <ul>
+          <li>population risk</li>
+          <li>specialist referral logic</li>
+          <li>medication sensitivity and hereditary contraindications</li>
+          <li>precision care planning</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>15. Epidemic Monitoring and Command Center</h2>
+        <p>
+          The epidemic service and epidemic alert components point to a broader public health intelligence layer. This is not just patient care;
+          it is also a global surveillance model. A new patient case can contribute to outbreak risk scoring and alert generation.
+        </p>
+        <p>
+          The project likely combines patient case data with publicly available health trend data to reason about a disease cluster, public risk, or a localized outbreak.
+          This makes the project a hybrid of clinical AI and public-health surveillance.
+        </p>
+      </section>
+
+      <section>
+        <h2>16. Convex Backend and Data Layer</h2>
+        <p>
+          The repository has a Convex folder with files such as <span class="code">auth.js</span>, <span class="code">patients.js</span>,
+          <span class="code">records.js</span>, <span class="code">feedback.js</span>, and <span class="code">schema.js</span>.
+          That pattern strongly suggests a real backend with:
+        </p>
+        <ul>
+          <li>data modeling</li>
+          <li>queries and mutations</li>
+          <li>user authentication and auth config</li>
+          <li>patient records management</li>
+          <li>feedback storage for admin review</li>
+        </ul>
+        <p>
+          This matters because it shows the project is not just UI; it has an operational state system. The frontend receives and mutates data from
+          a shared backend that can persist clinical records and session state.
+        </p>
+      </section>
+
+      <section>
+        <h2>17. Authentication and Session Model</h2>
+        <p>
+          The repository includes auth configuration and custom auth flow. The frontend app checks whether the user is authenticated before exposing modules.
+          Different user roles such as developer or normal user are likely supported. There is also a feedback system and in-app admin functions.
+        </p>
+        <p>
+          This architecture is important for healthcare applications because secure identity, role-based access, and session management are non-negotiable.
+        </p>
+      </section>
+
+      <section>
+        <h2>18. Why This Architecture Works Well</h2>
+        <p>
+          The combination of browser-side sensing + backend persistence + external AI reasoning gives the system a strong edge in responsiveness and flexibility:
+        </p>
+        <ul>
+          <li>Low-latency front-end interaction and patient-facing interfaces</li>
+          <li>Local processing for privacy-sensitive sensor data</li>
+          <li>Real-time backend synchronization for records and alerts</li>
+          <li>Specialized AI modules for different clinical tasks</li>
+          <li>Better observability through modular services and UI panels</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>19. Risks and Real-World Constraints</h2>
+        <p>
+          While the architecture is impressive, real-world medical deployments require much more than a demo-grade stack. The main risks include:
+        </p>
+        <ul>
+          <li>Model accuracy and confidence calibration in sensitive clinical contexts</li>
+          <li>Need for formal data governance and patient consent flows</li>
+          <li>Risk of incorrect AI inference without clinician supervision</li>
+          <li>Need for valid medical-grade validation tests and clinical review</li>
+          <li>Privacy and compliance issues around camera/audio processing</li>
+        </ul>
+        <p>
+          In other words, the project is conceptually solid and well-structured, but production deployment in a regulated healthcare setting would require deeper legal,
+          clinical, and engineering validation.
+        </p>
+      </section>
+
+      <section>
+        <h2>20. Recommended Production Hardening Roadmap</h2>
+        <ol>
+          <li>Separate clinical decision support from raw inference and enforce human review.</li>
+          <li>Add strict data retention policies for audio, video, and patient data.</li>
+          <li>Implement audit logs and secure event tracking across all modules.</li>
+          <li>Introduce confidence thresholds and fallback workflows when AI confidence is low.</li>
+          <li>Harden the backend with RBAC, access control, and environment validation.</li>
+          <li>Create model versioning and dataset drift monitoring for all inference components.</li>
+          <li>Integrate hospital EHR APIs or a secure clinical data exchange layer.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>21. Final Conclusion</h2>
+        <p>
+          SANJEEVANI AI is best understood as a clinical AI operating system designed around multimodal sensing, specialist reasoning, and patient-centered workflow automation.
+          The repository shows a thoughtful combination of React UI, Convex backend, AI orchestration, computer vision, audio analytics, and healthcare policy logic.
+          It is obvious that the project is intended to feel like a mission-critical AI medical command center rather than a simple website or prototype.
+        </p>
+        <p>
+          Its strongest architectural value is the modular composition: several independent intelligent subsystems operate together to create a unified triage and care recommendation engine.
+          That design gives the project a realistic path toward future clinical decision support products, provided it is hardened and validated properly.
+        </p>
+      </section>
+
+      <div class="footer-note">
+        Report generated from repository evidence including README, package.json, App.jsx, main.jsx, Convex backend structure, and source/component inventory.
+      </div>
+    </div>
+  </body>
+</html>
