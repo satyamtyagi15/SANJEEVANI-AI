@@ -106,24 +106,26 @@ const TriageCard = ({ data }) => {
     setIsSaving(true);
     try {
       const payload = { ...data, estimatedWaitTime: waitTime };
+      const patientId = data.patientId || payload.patientId || `PT-${Math.floor(1000 + Math.random() * 9000)}`;
       
-      // Save to MongoDB
+      // 1. Direct Save to MongoDB Atlas
+      await saveReportToDB('Triage', patientId, payload);
+      
+      // 2. Save to Convex for Patient Records Dashboard (without breaking existing functionality)
       try {
-        await saveReportToDB('Triage', data.patientId, payload);
-      } catch (e) {
-        console.warn("MongoDB save failed", e);
+        await saveRecordToConvex({
+          patientId: patientId,
+          type: 'Triage',
+          data: payload
+        });
+      } catch (convexErr) {
+        console.warn("Convex save note:", convexErr);
       }
-      
-      // Save to Convex for Patient Records Dashboard
-      await saveRecordToConvex({
-        patientId: data.patientId,
-        type: 'Triage',
-        data: payload
-      });
 
-      showAlert('Triage Record saved to Patient Records successfully!', 'success');
+      showAlert('Triage Record saved directly to MongoDB Atlas successfully!', 'success');
     } catch (err) {
-      showAlert('Failed to save report: ' + err.message, 'error');
+      console.error("MongoDB Save Error:", err);
+      showAlert('Failed to save to MongoDB: ' + err.message, 'error');
     } finally {
       setIsSaving(false);
     }
