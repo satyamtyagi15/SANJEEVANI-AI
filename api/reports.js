@@ -5,7 +5,7 @@ import Report from './models/Report.js';
 let cachedDb = null;
 
 async function connectToDatabase() {
-  if (cachedDb) {
+  if (cachedDb && mongoose.connection.readyState === 1) {
     return cachedDb;
   }
   const MONGODB_URI = process.env.MONGODB_URI;
