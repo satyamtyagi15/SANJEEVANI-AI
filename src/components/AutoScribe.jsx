@@ -1,13 +1,15 @@
-import React, { useState, useRef } from 'react';
-import { Mic, Loader2, Save, Activity, FileText, Download } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Mic, Loader2, Save, Activity, FileText, Download, Sparkles, RotateCcw } from 'lucide-react';
 import { startListening } from '../services/SpeechService';
 import { generateSOAPNote } from '../services/AIEngine';
 import { saveReportToDB, downloadPDF } from '../services/ReportService';
 import { showAlert } from '../services/AlertService';
+import CustomLanguageSelector from './CustomLanguageSelector';
 
 const AutoScribe = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [language, setLanguage] = useState('hi-IN');
   const [transcript, setTranscript] = useState('');
   const [interimTranscript, setInterimTranscript] = useState('');
   const [soapNote, setSoapNote] = useState(null);
@@ -16,6 +18,14 @@ const AutoScribe = () => {
   const [isSaving, setIsSaving] = useState(false);
   
   const recognitionRef = useRef(null);
+  const transcriptRef = useRef('');
+  const interimRef = useRef('');
+  const isRecordingRef = useRef(false);
+
+  // Sync refs when state changes manually
+  useEffect(() => {
+    transcriptRef.current = transcript;
+  }, [transcript]);
 
   const handleSaveReport = async () => {
     if (!soapNote) return;
@@ -38,46 +48,106 @@ const AutoScribe = () => {
     downloadPDF('AutoScribe', patientId || 'Anonymous', soapNote);
   };
 
-  const toggleRecording = () => {
-    setErrorMsg('');
-    if (isRecording) {
-      if (recognitionRef.current) recognitionRef.current.stop();
-      setIsRecording(false);
-      processTranscript();
-    } else {
-      setTranscript('');
-      setSoapNote(null);
-      recognitionRef.current = startListening(
-        'en-US',
-        (interim, final) => {
-          if (interim) setInterimTranscript(interim);
-          if (final) {
-            setTranscript((prev) => prev + ' ' + final);
-            setInterimTranscript('');
-          }
-        },
-        () => {
-          // In continuous mode, if it stops unexpectedly while still recording, we might auto-restart it in a real app.
-          // For now, if it drops, we stop.
-          if (isRecording) {
-             setIsRecording(false);
-             processTranscript();
-          }
-        },
-        (err) => {
-          setIsRecording(false);
-          setErrorMsg(err);
-        }
-      );
-      if (recognitionRef.current) setIsRecording(true);
+  const stopRecordingAndProcess = () => {
+    isRecordingRef.current = false;
+    setIsRecording(false);
+    
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        console.warn("Recognition stop error:", e);
+      }
+    }
+
+    // Merge any pending interim transcript into final transcript
+    const fullText = (transcriptRef.current + ' ' + interimRef.current).trim();
+    transcriptRef.current = fullText;
+    interimRef.current = '';
+    setTranscript(fullText);
+    setInterimTranscript('');
+
+    if (fullText) {
+      processTranscript(fullText);
     }
   };
 
-  const processTranscript = async () => {
-    if (!transcript.trim()) return;
+  const startRecording = () => {
+    setErrorMsg('');
+    transcriptRef.current = '';
+    interimRef.current = '';
+    setTranscript('');
+    setInterimTranscript('');
+    setSoapNote(null);
+    isRecordingRef.current = true;
+    setIsRecording(true);
+
+    recognitionRef.current = startListening(
+      language,
+      (interim, final) => {
+        if (interim) {
+          interimRef.current = interim;
+          setInterimTranscript(interim);
+        }
+        if (final) {
+          transcriptRef.current = (transcriptRef.current + ' ' + final).trim();
+          interimRef.current = '';
+          setTranscript(transcriptRef.current);
+          setInterimTranscript('');
+        }
+      },
+      () => {
+        // Recognition ended by browser (silence or timeout)
+        if (isRecordingRef.current) {
+          stopRecordingAndProcess();
+        }
+      },
+      (err) => {
+        if (err && typeof err === 'string' && err.includes('no-speech')) {
+          if (transcriptRef.current || interimRef.current) {
+            stopRecordingAndProcess();
+          } else {
+            isRecordingRef.current = false;
+            setIsRecording(false);
+            setErrorMsg("No speech detected. Please speak closer to the mic.");
+          }
+        } else {
+          isRecordingRef.current = false;
+          setIsRecording(false);
+          setErrorMsg(err || "Microphone error. Please check browser permissions.");
+        }
+      }
+    );
+
+    if (!recognitionRef.current) {
+      isRecordingRef.current = false;
+      setIsRecording(false);
+    }
+  };
+
+  const toggleRecording = () => {
+    setErrorMsg('');
+    if (isRecordingRef.current || isRecording) {
+      stopRecordingAndProcess();
+    } else {
+      startRecording();
+    }
+  };
+
+  const processTranscript = async (textOverride) => {
+    const raw = typeof textOverride === 'string' 
+      ? textOverride 
+      : (transcriptRef.current + ' ' + interimRef.current).trim() || transcript.trim();
+      
+    if (!raw) {
+      setErrorMsg("Please record or enter a consultation transcript first.");
+      return;
+    }
+
+    setErrorMsg('');
     setIsProcessing(true);
     try {
-      const note = await generateSOAPNote(transcript);
+      const note = await generateSOAPNote(raw);
       setSoapNote(note);
     } catch (err) {
       setErrorMsg("Failed to generate SOAP note. AI Server issue.");
@@ -86,20 +156,39 @@ const AutoScribe = () => {
     }
   };
 
+  const handleClear = () => {
+    transcriptRef.current = '';
+    interimRef.current = '';
+    setTranscript('');
+    setInterimTranscript('');
+    setSoapNote(null);
+    setErrorMsg('');
+  };
+
   return (
     <div className="module-container" style={{ display: 'flex', gap: '2rem' }}>
       {/* Left Column: Recording & Transcript */}
       <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div className="section-header">
-          <h2>Auto-Scribe</h2>
-          <p>Ambient Clinical Intelligence</p>
+        <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h2>Auto-Scribe</h2>
+            <p>Ambient Clinical Intelligence</p>
+          </div>
+          <div style={{ minWidth: '180px' }}>
+            <CustomLanguageSelector 
+              language={language}
+              setLanguage={setLanguage}
+              disabled={isRecording || isProcessing}
+            />
+          </div>
         </div>
 
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2rem' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.5rem', marginTop: '1rem' }}>
           <button 
             className={`mic-button ${isRecording ? 'listening' : ''}`} 
             onClick={toggleRecording}
             disabled={isProcessing}
+            title={isRecording ? "Click to Stop Recording" : "Click to Start Recording"}
           >
             {isRecording ? <Activity size={48} /> : <Mic size={48} />}
           </button>
@@ -108,18 +197,78 @@ const AutoScribe = () => {
             {isRecording ? "LISTENING TO CONSULTATION..." : isProcessing ? "ANALYZING TRANSCRIPT..." : "READY TO RECORD"}
           </div>
 
-          <div className="transcript-box" style={{ width: '100%', flex: 1, minHeight: '300px' }}>
-            {transcript || interimTranscript ? (
-              <p>
-                {transcript}
-                <span style={{ color: 'var(--primary)', opacity: 0.7 }}>{interimTranscript}</span>
-              </p>
-            ) : (
-              <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', marginTop: '4rem' }}>
-                Press the microphone to start recording the doctor-patient conversation. The AI will automatically ignore small talk and extract medical facts.
+          <div className="transcript-box" style={{ width: '100%', flex: 1, minHeight: '260px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1 }}>
+              {transcript || interimTranscript ? (
+                <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                  {transcript}
+                  {interimTranscript && (
+                    <span style={{ color: 'var(--primary)', opacity: 0.8, marginLeft: transcript ? '0.5rem' : '0' }}>
+                      {interimTranscript}
+                    </span>
+                  )}
+                </p>
+              ) : (
+                <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', marginTop: '3rem' }}>
+                  Press the microphone to start recording the doctor-patient conversation in any language. The AI will automatically extract clinical facts and format a SOAP note.
+                </p>
+              )}
+            </div>
+
+            {errorMsg && (
+              <p style={{ color: 'var(--status-red)', marginTop: '0.8rem', fontSize: '0.9rem' }}>
+                {errorMsg}
               </p>
             )}
-            {errorMsg && <p style={{ color: 'var(--status-red)', marginTop: '1rem' }}>{errorMsg}</p>}
+
+            {/* Action Bar for Transcript */}
+            {(transcript || interimTranscript) && !isRecording && (
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <button
+                  onClick={() => processTranscript()}
+                  disabled={isProcessing}
+                  style={{
+                    flex: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    padding: '0.65rem 1rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'var(--primary)',
+                    color: '#000',
+                    fontWeight: 'bold',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  {isProcessing ? <Loader2 size={16} className="spin" /> : <Sparkles size={16} />}
+                  {isProcessing ? 'Generating SOAP Note...' : 'Generate SOAP Note'}
+                </button>
+                <button
+                  onClick={handleClear}
+                  disabled={isProcessing}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.4rem',
+                    padding: '0.65rem 1rem',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    background: 'transparent',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  <RotateCcw size={15} />
+                  Clear
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -134,7 +283,7 @@ const AutoScribe = () => {
         {isProcessing ? (
           <div className="empty-state">
             <Loader2 size={48} className="spin" />
-            <p>Extracting Medical Entities...</p>
+            <p style={{ marginTop: '1rem', color: 'var(--primary)' }}>Extracting Medical Entities & Structuring SOAP Note...</p>
           </div>
         ) : soapNote ? (
           <div className="ehr-card" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -196,7 +345,7 @@ const AutoScribe = () => {
                 Download PDF
               </button>
               <button 
-                onClick={() => { setTranscript(''); setInterimTranscript(''); setSoapNote(null); setErrorMsg(''); }}
+                onClick={handleClear}
                 disabled={isSaving}
                 style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: '#fff', fontWeight: 'bold', cursor: isSaving ? 'not-allowed' : 'pointer' }}
               >

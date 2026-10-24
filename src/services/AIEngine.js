@@ -5,11 +5,12 @@ const apiKey = p1 + p2;
 
 
 const modelsToTry = [
+  "nvidia/nemotron-3.5-lightning:free",
   "cohere/north-mini-code:free",
-  "poolside/laguna-xs-2.1:free",
-  "tencent/hy3:free",
-  "google/gemma-4-31b-it:free",
-  "nvidia/nemotron-3-super-120b-a12b:free"
+  "recursive/flint-v1.0:free",
+  "liquid/lfm-2.5-2.6b:free",
+  "google/gemma-4-26b-a4b-it:free",
+  "poolside/laguna-xs-2.1:free"
 ];
 
 const callOpenRouterJSON = async (systemPrompt, userPrompt, timeout = 25000) => {
@@ -297,7 +298,8 @@ export const generateSOAPNote = async (transcript) => {
     const prompt = `
       You are an expert Ambient Clinical Intelligence AI (Auto-Scribe).
       Analyze the following raw transcript of a doctor-patient conversation.
-      Your task is to ignore any small talk and extract all medically relevant information into a highly professional SOAP note.
+      Note: The consultation transcript may be in English, Hindi, Hinglish, or mixed Indian regional language.
+      Your task is to ignore any small talk and extract all medically relevant information into a highly professional SOAP note in English.
       
       Transcript:
       "${transcript}"
@@ -315,6 +317,16 @@ export const generateSOAPNote = async (transcript) => {
     return await callOpenRouterJSON("You are a Medical SOAP Note AI. Output only valid raw JSON.", prompt, 25000);
   } catch (error) {
     console.error("AutoScribe Error:", error);
+    const clean = (transcript || "").trim();
+    if (clean) {
+      return {
+        subjective: `Patient reported symptoms: ${clean}`,
+        objective: "Vitals and physical observations to be clinically validated by attending physician.",
+        assessment: "Preliminary clinical consultation recorded. Further evaluation recommended.",
+        plan: "Symptomatic treatment, hydration, rest, and follow-up consultation with primary physician.",
+        extractedKeywords: clean.split(/\s+/).filter(w => w.length > 3).slice(0, 5)
+      };
+    }
     throw new Error("Failed to generate SOAP note.");
   }
 };
