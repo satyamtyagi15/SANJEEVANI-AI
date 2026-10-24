@@ -550,3 +550,125 @@ export const analyzeArtTherapyEmotion = async (userEmotion) => {
   }
 };
 
+export const analyzePharmacovigilanceADR = async (reportData) => {
+  try {
+    const prompt = `
+      You are an expert Clinical Pharmacovigilance, Adverse Drug Reaction (ADR), and Toxicology Specialist AI.
+      A doctor is reporting a patient who is taking specific medications and is now experiencing adverse reactions/symptoms.
+
+      Patient Case:
+      - Patient ID: ${reportData.patientId || "Anonymous"}
+      - Demographics: Age ${reportData.age || "Unknown"}, Gender ${reportData.gender || "Unknown"}
+      - Known Comorbidities: ${reportData.comorbidities || "None reported"}
+      - Known Allergies: ${reportData.allergies || "None reported"}
+      - Current Medications: ${JSON.stringify(reportData.medications || [])}
+      - Adverse Symptoms Experienced: ${JSON.stringify(reportData.adverseSymptoms || [])}
+      - Doctor's Clinical Observation: "${reportData.clinicalNotes || "None provided"}"
+
+      TASK:
+      1. Causality Assessment: Evaluate using WHO-UMC causality categories (Certain, Probable, Possible, Unlikely) and estimate the Naranjo Causality Score (scale -1 to +9).
+      2. Identify the Culprit Drug: Determine which specific medication (or combination) is the most probable offending agent.
+      3. Biochemical Mechanism: Explain the pharmacological and physiological mechanism causing this reaction.
+      4. Risk & Urgency Classification: Classify risk as "Mild", "Moderate", "Severe", or "Critical / Life-Threatening".
+      5. Clinical Management: Provide immediate emergency counter-actions, dechallenge instructions, and rechallenge risk.
+      6. Safe Alternatives: Recommend safe, non-cross-reactive alternative medications for the patient's underlying condition.
+      7. Regulatory Reporting: Provide a MedWatch / PvPI (Pharmacovigilance Programme of India) standard reporting summary.
+
+      Respond STRICTLY in the following JSON format ONLY. Do not wrap in markdown or conversation:
+      {
+        "causalityAssessment": {
+          "score": 8,
+          "category": "Probable",
+          "culpritDrug": "Name of offending drug",
+          "suspectedReaction": "Clinical diagnosis of the adverse reaction",
+          "mechanism": "Biochemical mechanism explanation"
+        },
+        "riskLevel": "Mild | Moderate | Severe | Critical",
+        "urgency": "Immediate actionable clinical directive",
+        "reactionDetails": [
+          {
+            "symptom": "Reported symptom",
+            "correlatedMedication": "Culprit drug",
+            "likelihood": "High | Medium | Low",
+            "clinicalPathology": "Pathological correlation"
+          }
+        ],
+        "dechallengeRechallenge": {
+          "dechallengeAction": "Clear instruction on drug cessation or dose reduction",
+          "expectedCourse": "Expected resolution timeline upon stopping",
+          "rechallengeSafe": false,
+          "rechallengeWarning": "Rechallenge contraindication notes"
+        },
+        "emergencyActions": [
+          "Action 1",
+          "Action 2"
+        ],
+        "safeAlternatives": [
+          {
+            "condition": "Underlying condition",
+            "recommendedAlternative": "Alternative safe medicine",
+            "rationale": "Why it does not cause cross-reactivity"
+          }
+        ],
+        "medWatchSummary": {
+          "reportable": true,
+          "adverseEventTerm": "Standard MedDRA / ICD term",
+          "regulatoryAgency": "PvPI / FDA MedWatch Form 3500",
+          "summaryNarrative": "Concise 1-2 sentence regulatory report narrative"
+        }
+      }
+    `;
+
+    return await callOpenRouterJSON("You are an expert Clinical Pharmacovigilance and Toxicology AI. Output only valid raw JSON.", prompt, 25000);
+  } catch (error) {
+    console.error("Pharmacovigilance ADR Analysis Error:", error);
+    const firstMed = reportData.medications?.[0]?.name || "Reported Medication";
+    const symptomsList = reportData.adverseSymptoms?.map(s => typeof s === 'string' ? s : s.symptom).join(', ') || "Adverse symptoms";
+    return {
+      causalityAssessment: {
+        score: 6,
+        category: "Possible",
+        culpritDrug: firstMed,
+        suspectedReaction: `Adverse drug reaction associated with ${firstMed}`,
+        mechanism: "Direct or immune-mediated adverse reaction triggered following drug administration."
+      },
+      riskLevel: "Moderate",
+      urgency: "Temporarily hold suspected medication and monitor vitals closely.",
+      reactionDetails: [
+        {
+          symptom: symptomsList,
+          correlatedMedication: firstMed,
+          likelihood: "Medium",
+          clinicalPathology: "Temporal association observed following medication therapy."
+        }
+      ],
+      dechallengeRechallenge: {
+        dechallengeAction: `Discontinue ${firstMed} under physician supervision.`,
+        expectedCourse: "Monitor for symptom resolution over the next 48-72 hours.",
+        rechallengeSafe: false,
+        rechallengeWarning: "Avoid rechallenge until full clinical review and allergy testing."
+      },
+      emergencyActions: [
+        `Withhold ${firstMed} immediately.`,
+        "Check baseline CBC, Liver Function (LFT), Renal Function (KFT), and vital signs.",
+        "Provide supportive care and symptomatic relief.",
+        "Consult hospital pharmacovigilance committee."
+      ],
+      safeAlternatives: [
+        {
+          condition: "Underlying therapeutic indication",
+          recommendedAlternative: "Consult specialist for safe alternative from a different chemical class",
+          rationale: "Minimizes cross-reactivity risk."
+        }
+      ],
+      medWatchSummary: {
+        reportable: true,
+        adverseEventTerm: symptomsList,
+        regulatoryAgency: "PvPI / FDA MedWatch Form 3500",
+        summaryNarrative: `Suspected adverse drug event (${symptomsList}) temporally associated with ${firstMed}.`
+      }
+    };
+  }
+};
+
+

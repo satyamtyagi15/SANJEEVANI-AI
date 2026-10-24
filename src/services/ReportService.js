@@ -120,6 +120,26 @@ export const downloadPDF = async (reportType, patientId, reportData) => {
     addSection('Assessment', reportData.assessment);
     addSection('Plan', reportData.plan);
     if (reportData.icd10) addSection('ICD-10 Codes', reportData.icd10.join(', '));
+  } else if (reportType === 'Pharmacovigilance') {
+    addSection('Suspected Culprit Drug', reportData.causalityAssessment?.culpritDrug, true);
+    addSection('Causality Assessment (WHO-UMC / Naranjo)', `${reportData.causalityAssessment?.category || 'Probable'} (Score: ${reportData.causalityAssessment?.score ?? 'N/A'}/9)`);
+    addSection('Diagnosed Adverse Reaction', reportData.causalityAssessment?.suspectedReaction);
+    addSection('Biochemical Mechanism', reportData.causalityAssessment?.mechanism);
+    addSection('Reaction Severity & Urgency', `${reportData.riskLevel || 'Severe'} — ${reportData.urgency || ''}`, reportData.riskLevel === 'Severe' || reportData.riskLevel === 'Critical');
+    if (reportData.emergencyActions?.length > 0) {
+      addSection('Immediate Emergency Interventions', reportData.emergencyActions.join('\n• '));
+    }
+    if (reportData.dechallengeRechallenge) {
+      addSection('Dechallenge Advice', reportData.dechallengeRechallenge.dechallengeAction);
+      addSection('Rechallenge Risk', `${reportData.dechallengeRechallenge.rechallengeSafe ? 'Safe under supervision' : 'CONTRAINDICATED'} — ${reportData.dechallengeRechallenge.rechallengeWarning || ''}`, !reportData.dechallengeRechallenge.rechallengeSafe);
+    }
+    if (reportData.safeAlternatives?.length > 0) {
+      const altStr = reportData.safeAlternatives.map(a => `${a.condition}: ${a.recommendedAlternative} (${a.rationale})`).join('\n• ');
+      addSection('Recommended Safe Alternatives', '• ' + altStr);
+    }
+    if (reportData.medWatchSummary) {
+      addSection('Regulatory Reporting (PvPI / FDA MedWatch)', `Adverse Term: ${reportData.medWatchSummary.adverseEventTerm}\n${reportData.medWatchSummary.summaryNarrative}`);
+    }
   } else if (reportType === 'MultiAgent') {
     addSection('Patient Case', reportData.caseDescription);
     addSection('Final Diagnostic Consensus', reportData.consensus);

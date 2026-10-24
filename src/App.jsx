@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
-import { Stethoscope, Mic, Pill, ScanEye, Users, Activity, Dna, Palette, Camera, ShieldCheck, Database, Menu, X, LogOut, Code, MessageSquare, Send } from 'lucide-react';
+import { Stethoscope, Mic, Pill, ScanEye, Users, Activity, Dna, Palette, Camera, ShieldCheck, Database, Menu, X, LogOut, Code, MessageSquare, Send, ShieldAlert } from 'lucide-react';
 import { useCustomAuth } from './context/AuthContext';
 import CustomAuth from './components/Auth/CustomAuth';
 import DeveloperDashboard from './components/Admin/DeveloperDashboard';
@@ -10,6 +10,7 @@ import DoctorDashboard from './components/DoctorDashboard';
 import EpidemicAlert from './components/EpidemicAlert';
 import AutoScribe from './components/AutoScribe';
 import PharmaAI from './components/PharmaAI';
+import Pharmacovigilance from './components/Pharmacovigilance';
 import VisionAI from './components/VisionAI';
 import MultiAgent from './components/MultiAgent';
 import DigitalTwin from './components/DigitalTwin';
@@ -138,6 +139,9 @@ function App() {
           <li className={activeModule === 'pharma' ? 'active' : ''} onClick={() => { setActiveModule('pharma'); setIsNavOpen(false); }}>
             <Pill size={20} /> <span>Pharma AI</span>
           </li>
+          <li className={activeModule === 'pharmacovigilance' ? 'active' : ''} onClick={() => { setActiveModule('pharmacovigilance'); setIsNavOpen(false); }}>
+            <ShieldAlert size={20} /> <span>Pharmacovigilance</span>
+          </li>
           <li className={activeModule === 'vision' ? 'active' : ''} onClick={() => { setActiveModule('vision'); setIsNavOpen(false); }}>
             <ScanEye size={20} /> <span>Vision AI</span>
           </li>
@@ -186,6 +190,7 @@ function App() {
         {activeModule === 'records' && <PatientRecords />}
         {activeModule === 'scribe' && <AutoScribe />}
         {activeModule === 'pharma' && <PharmaAI />}
+        {activeModule === 'pharmacovigilance' && <Pharmacovigilance />}
         {activeModule === 'vision' && <VisionAI />}
         {activeModule === 'multi-agent' && <MultiAgent />}
         {activeModule === 'digital-twin' && <DigitalTwin />}
