@@ -1,40 +1,46 @@
 // Real OpenStreetMap data for nearby medical facilities (pharmacies, hospitals, clinics,
-// doctors, dentists, nursing homes). Both APIs are free and keyless:
-//   - Nominatim  -> turns the location text fetched in the kiosk into coordinates
-//   - Overpass   -> returns real facilities around those coordinates
-// Nothing here is simulated: if the APIs return no facilities, the UI says so instead of
-// inventing a pharmacy name.
+// doctors, dentists). Free, keyless, CORS-enabled APIs:
+//
+//   1. Photon (komoot)  -> fast category search inside a bounding box (primary)
+//   2. Nominatim        -> bounded viewbox search (fallback)
+//
+// Both are OSM-based and return real facilities. There is no fabricated fallback: if
+// neither service returns anything, the UI is told exactly that.
+//
+// (Overpass was removed as the primary source: its public instances took 45-60 s per
+// query from real networks, which is why the widget previously ended up showing the
+// hard-coded "Network Fallback" text.)
 
+const PHOTON_URL = 'https://photon.komoot.io/api/';
 const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org';
-const OVERPASS_ENDPOINTS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-];
+
+const PHOTON_TIMEOUT_MS = 5000;
+const NOMINATIM_TIMEOUT_MS = 6000;
+const NOMINATIM_MIN_INTERVAL_MS = 1100; // Nominatim policy: at most 1 request/second
 const GEO_TIMEOUT_MS = 10000;
-const OVERPASS_TIMEOUT_MS = 9000;
-const DEFAULT_RADIUS_M = 6000;
-const WIDE_RADIUS_M = 15000;
-const MAX_FACILITIES = 25;
+
+// Search area. Start at 25 km (a city + its outskirts); widen to 50 km only when very
+// few facilities exist nearby, so remote locations still get results.
+const SEARCH_RADII_M = [25000, 50000];
+const MIN_RESULTS_BEFORE_WIDEN = 3;
+const MAX_FACILITIES = 30;
 const CACHE_TTL_MS = 10 * 60 * 1000;
+
+const PHOTON_TERMS = [
+  { q: 'pharmacy', tag: 'amenity:pharmacy', type: 'Pharmacy' },
+  { q: 'hospital', tag: 'amenity:hospital', type: 'Hospital' },
+  { q: 'clinic', tag: 'amenity:clinic', type: 'Clinic' },
+  { q: 'doctors', tag: 'amenity:doctors', type: 'Doctor' },
+  { q: 'dentist', tag: 'amenity:dentist', type: 'Dentist' },
+];
+
+const NOMINATIM_TERMS = ['pharmacy', 'hospital', 'clinic'];
 
 const memoryCache = new Map();
 const inFlight = new Map();
+let lastNominatimAt = 0;
 
-const FACILITY_LABELS = {
-  pharmacy: 'Pharmacy',
-  hospital: 'Hospital',
-  clinic: 'Clinic',
-  doctors: 'Doctor',
-  dentist: 'Dentist',
-  nursing_home: 'Nursing home',
-  laboratory: 'Laboratory',
-  centre: 'Health centre',
-  health_centre: 'Health centre',
-  rehabilitation: 'Rehabilitation centre',
-  blood_donation: 'Blood bank',
-  vaccination_centre: 'Vaccination centre',
-  sample_collection: 'Sample collection centre',
-};
+/* ----------------------------- small utils ----------------------------- */
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // km
@@ -50,8 +56,6 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
-/* ----------------------------- small utils ----------------------------- */
-
 function cacheGet(key) {
   const hit = memoryCache.get(key);
   if (!hit) return undefined;
@@ -65,6 +69,8 @@ function cacheGet(key) {
 function cacheSet(key, value) {
   memoryCache.set(key, { at: Date.now(), value });
 }
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** fetch + JSON parse where the timeout also covers the body download. */
 async function fetchJson(url, { timeoutMs, init = {}, signal } = {}) {
@@ -84,6 +90,41 @@ async function fetchJson(url, { timeoutMs, init = {}, signal } = {}) {
   }
 }
 
+function boundingBox(lat, lon, radiusM) {
+  const dLat = radiusM / 111320;
+  const dLon = radiusM / (111320 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)));
+  return {
+    south: lat - dLat,
+    north: lat + dLat,
+    west: lon - dLon,
+    east: lon + dLon,
+  };
+}
+
+function filterAndRank(facilities, origin, radiusM) {
+  const maxKm = radiusM / 1000 + 0.25;
+  const seen = new Set();
+  const out = [];
+
+  facilities.forEach((facility) => {
+    if (!facility || !Number.isFinite(facility.lat) || !Number.isFinite(facility.lon)) return;
+    const distKm = calculateDistance(origin.lat, origin.lon, facility.lat, facility.lon);
+    if (distKm > maxKm) return;
+
+    // Same facility is often mapped as node + way: de-duplicate within ~500 m.
+    const dedupeKey = `${facility.name.toLowerCase()}|${Math.round(distKm * 2)}`;
+    if (seen.has(dedupeKey)) return;
+    seen.add(dedupeKey);
+
+    out.push({ ...facility, distKm: Math.round(distKm * 10) / 10 });
+  });
+
+  out.sort((a, b) => a.distKm - b.distKm);
+  return out.slice(0, MAX_FACILITIES);
+}
+
+/* ----------------------------- geocoding ------------------------------ */
+
 function shortPlaceLabel(hit, fallback) {
   const display = hit?.display_name || '';
   if (!display) return fallback || 'Selected location';
@@ -91,8 +132,6 @@ function shortPlaceLabel(hit, fallback) {
   if (parts.length <= 2) return parts.join(', ');
   return `${parts[0]}, ${parts[parts.length - 3] || parts[1]}`;
 }
-
-/* ----------------------------- geocoding ------------------------------ */
 
 export async function geocodeLocation(location, signal, force = false) {
   const query = (location || '').trim();
@@ -106,6 +145,7 @@ export async function geocodeLocation(location, signal, force = false) {
 
   const url = `${NOMINATIM_BASE}/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`;
   try {
+    lastNominatimAt = Date.now();
     const data = await fetchJson(url, {
       timeoutMs: GEO_TIMEOUT_MS,
       init: { headers: { Accept: 'application/json' } },
@@ -147,105 +187,144 @@ async function resolveLocation({ location, lat, lon, signal, force }) {
   return geocodeLocation(location, signal, force);
 }
 
-/* ------------------------------ overpass ------------------------------- */
+/* ------------------------------- photon -------------------------------- */
 
-function buildOverpassQuery(lat, lon, radiusM) {
-  return `[out:json][timeout:25];
-(
-  nwr["amenity"="pharmacy"](around:${radiusM},${lat},${lon});
-  nwr["amenity"="hospital"](around:${radiusM},${lat},${lon});
-  nwr["amenity"="clinic"](around:${radiusM},${lat},${lon});
-  nwr["amenity"="doctors"](around:${radiusM},${lat},${lon});
-  nwr["amenity"="dentist"](around:${radiusM},${lat},${lon});
-  nwr["amenity"="nursing_home"](around:${radiusM},${lat},${lon});
-  nwr["healthcare"](around:${radiusM},${lat},${lon});
-);
-out center 120;`;
+function osmUrlFromPhoton(props) {
+  const type = String(props.osm_type || 'N').toUpperCase();
+  const kind = type === 'W' ? 'way' : type === 'R' ? 'relation' : 'node';
+  return `https://www.openstreetmap.org/${kind}/${props.osm_id}`;
 }
 
-async function fetchOverpass(lat, lon, radiusM, signal) {
-  const body = 'data=' + encodeURIComponent(buildOverpassQuery(lat, lon, radiusM));
-  const shared = new AbortController();
-  const forwardAbort = () => shared.abort();
-  signal?.addEventListener?.('abort', forwardAbort, { once: true });
+function facilityFromPhoton(feature, fallbackType) {
+  const props = feature?.properties || {};
+  const name = String(props.name || props['name:en'] || '').trim();
+  const coords = feature?.geometry?.coordinates;
+  if (!name || !Array.isArray(coords) || coords.length < 2) return null;
 
-  try {
-    return await Promise.any(
-      OVERPASS_ENDPOINTS.map((endpoint) =>
-        fetchJson(endpoint, {
-          timeoutMs: OVERPASS_TIMEOUT_MS,
-          init: {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body,
-          },
-          signal: shared.signal,
-        })
-      )
-    );
-  } finally {
-    // Stop the slower mirror as soon as one answered (or the whole thing aborted).
-    shared.abort();
-    signal?.removeEventListener?.('abort', forwardAbort);
-  }
+  const street = [props.housenumber, props.street].filter(Boolean).join(' ');
+  const address = [street, props.district || props.city, props.state, props.postcode]
+    .filter(Boolean)
+    .join(', ') || null;
+
+  const typeFromTag = props.osm_value === 'doctors' ? 'Doctor' : props.osm_value === 'dentist' ? 'Dentist' : null;
+
+  return {
+    id: `${props.osm_type || 'N'}${props.osm_id}`,
+    name,
+    type: typeFromTag || fallbackType,
+    lat: Number(coords[1]),
+    lon: Number(coords[0]),
+    address,
+    phone: props.phone || props['contact:phone'] || null,
+    openingHours: props.opening_hours || null,
+    emergency: false,
+    osmUrl: osmUrlFromPhoton(props),
+  };
 }
 
-function facilityType(tags) {
-  const raw = tags.amenity || tags.healthcare || 'healthcare';
-  if (FACILITY_LABELS[raw]) return FACILITY_LABELS[raw];
-  return raw.charAt(0).toUpperCase() + raw.slice(1).replace(/_/g, ' ');
-}
-
-function buildAddress(tags) {
-  const parts = [
-    tags['addr:housename'],
-    tags['addr:housenumber'],
-    tags['addr:street'],
-    tags['addr:suburb'] || tags['addr:neighbourhood'],
-    tags['addr:city'] || tags['addr:town'] || tags['addr:village'],
-    tags['addr:postcode'],
-  ].filter(Boolean);
-  return parts.length ? parts.join(', ') : null;
-}
-
-function normalizeFacilities(elements, origin) {
+async function fetchPhotonRound(resolved, radiusM, signal) {
+  const box = boundingBox(resolved.lat, resolved.lon, radiusM);
+  const bbox = [box.west, box.south, box.east, box.north].map((v) => v.toFixed(5)).join(',');
+  let succeeded = 0;
   const facilities = [];
-  const seen = new Set();
 
-  (elements || []).forEach((element) => {
-    const tags = element.tags || {};
-    const name = (tags.name || tags['name:en'] || tags.brand || tags.operator || '').trim();
-    if (!name) return;
+  await Promise.all(
+    PHOTON_TERMS.map(async (term) => {
+      const url =
+        `${PHOTON_URL}?q=${encodeURIComponent(term.q)}` +
+        `&osm_tag=${encodeURIComponent(term.tag)}` +
+        `&bbox=${bbox}&limit=40&lang=en`;
+      try {
+        const data = await fetchJson(url, {
+          timeoutMs: PHOTON_TIMEOUT_MS,
+          init: { headers: { Accept: 'application/json' } },
+          signal,
+        });
+        succeeded += 1;
+        (data?.features || []).forEach((feature) => {
+          const facility = facilityFromPhoton(feature, term.type);
+          if (facility) facilities.push(facility);
+        });
+      } catch {
+        // One category failing must not fail the round.
+      }
+    })
+  );
 
-    const lat = element.lat ?? element.center?.lat;
-    const lon = element.lon ?? element.center?.lon;
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+  return { facilities, succeeded };
+}
 
-    const distKm = calculateDistance(origin.lat, origin.lon, lat, lon);
-    if (distKm > 25) return; // guard against bad geocodes / bad OSM data
+/* ------------------------------ nominatim ------------------------------ */
 
-    // Same facility is often mapped as node + way + relation: de-duplicate within ~500 m.
-    const dedupeKey = `${name.toLowerCase()}|${Math.round(distKm * 2)}`;
-    if (seen.has(dedupeKey)) return;
-    seen.add(dedupeKey);
+function facilityFromNominatim(item, fallbackType) {
+  // Text search can also match roads/areas whose *name* contains "pharmacy"/"hospital".
+  // Only accept results whose OSM type is an actual healthcare facility.
+  const typeMap = {
+    pharmacy: 'Pharmacy',
+    hospital: 'Hospital',
+    clinic: 'Clinic',
+    doctors: 'Doctor',
+    dentist: 'Dentist',
+  };
+  const mappedType = typeMap[item?.type];
+  if (!mappedType) return null;
 
-    facilities.push({
-      id: `${element.type}/${element.id}`,
-      name,
-      type: facilityType(tags),
-      distKm: Math.round(distKm * 10) / 10,
-      lat,
-      lon,
-      address: buildAddress(tags),
-      phone: tags.phone || tags['contact:phone'] || null,
-      openingHours: tags.opening_hours || null,
-      emergency: tags.emergency === 'yes',
-      osmUrl: `https://www.openstreetmap.org/${element.type}/${element.id}`,
-    });
-  });
+  const name = String(item?.name || item?.display_name?.split(',')[0] || '').trim();
+  const lat = Number(item?.lat);
+  const lon = Number(item?.lon);
+  if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
 
-  facilities.sort((a, b) => a.distKm - b.distKm);
-  return facilities.slice(0, MAX_FACILITIES);
+  const address = item.display_name
+    ? item.display_name.replace(`${name}, `, '').split(',').slice(0, 4).join(', ')
+    : null;
+
+  return {
+    id: `${item.osm_type || 'N'}${item.osm_id}`,
+    name,
+    type: mappedType || fallbackType,
+    lat,
+    lon,
+    address,
+    phone: item.extratags?.phone || item.extratags?.['contact:phone'] || null,
+    openingHours: item.extratags?.opening_hours || null,
+    emergency: false,
+    osmUrl: item.osm_type
+      ? `https://www.openstreetmap.org/${String(item.osm_type).toLowerCase()}/${item.osm_id}`
+      : null,
+  };
+}
+
+async function fetchNominatimRound(resolved, radiusM, signal) {
+  const box = boundingBox(resolved.lat, resolved.lon, radiusM);
+  const viewbox = [box.west, box.north, box.east, box.south].map((v) => v.toFixed(5)).join(',');
+  const facilities = [];
+  let succeeded = 0;
+
+  for (const term of NOMINATIM_TERMS) {
+    const wait = Math.max(0, NOMINATIM_MIN_INTERVAL_MS - (Date.now() - lastNominatimAt));
+    if (wait > 0) await sleep(wait);
+    lastNominatimAt = Date.now();
+
+    const url =
+      `${NOMINATIM_BASE}/search?format=jsonv2&limit=40&bounded=1&extratags=1` +
+      `&viewbox=${viewbox}&q=${encodeURIComponent(term)}`;
+    try {
+      const data = await fetchJson(url, {
+        timeoutMs: NOMINATIM_TIMEOUT_MS,
+        init: { headers: { Accept: 'application/json' } },
+        signal,
+      });
+      succeeded += 1;
+      (Array.isArray(data) ? data : []).forEach((item) => {
+        const facility = facilityFromNominatim(item, 'Healthcare facility');
+        if (facility) facilities.push(facility);
+      });
+    } catch {
+      // try the next term
+    }
+  }
+
+  return { facilities, succeeded };
 }
 
 /* ------------------------------ main API ------------------------------- */
@@ -270,7 +349,7 @@ export async function fetchNearbyMedicalFacilities({ location, lat, lon, radius,
     };
   }
 
-  const cacheKey = `fac:${resolved.lat.toFixed(3)},${resolved.lon.toFixed(3)}:${radius || 'auto'}`;
+  const cacheKey = `fac:${resolved.lat.toFixed(3)},${resolved.lon.toFixed(3)}:${radius || 'auto'}:v2`;
   if (!force) {
     const cached = cacheGet(cacheKey);
     if (cached !== undefined) return { ...cached, cached: true };
@@ -280,40 +359,42 @@ export async function fetchNearbyMedicalFacilities({ location, lat, lon, radius,
   if (existing && !force) return existing;
 
   const task = (async () => {
-    let radiusM = Number(radius) > 0 ? Number(radius) : DEFAULT_RADIUS_M;
-    try {
-      let payload = await fetchOverpass(resolved.lat, resolved.lon, radiusM, signal);
-      let facilities = normalizeFacilities(payload?.elements, resolved);
+    const radii = Number(radius) > 0 ? [Number(radius)] : SEARCH_RADII_M;
+    let facilities = [];
+    let usedRadius = radii[0];
+    let providerReachable = false;
 
-      // Sparse/rural area: one wider retry before giving up.
-      if (facilities.length === 0 && radiusM < WIDE_RADIUS_M) {
-        radiusM = WIDE_RADIUS_M;
-        payload = await fetchOverpass(resolved.lat, resolved.lon, radiusM, signal);
-        facilities = normalizeFacilities(payload?.elements, resolved);
-      }
+    // Query BOTH providers in parallel for the same area and merge whatever comes back:
+    //  - Photon is fastest but its free tier is rate-limited from time to time
+    //  - Nominatim bounded search is slower (1 req/s policy) but very reliable
+    // Running them together keeps the worst case at ~one provider's latency instead of
+    // adding the two latencies, and one provider being down never blocks the list.
+    for (const radiusM of radii) {
+      const [photonResult, nominatimResult] = await Promise.allSettled([
+        fetchPhotonRound(resolved, radiusM, signal),
+        fetchNominatimRound(resolved, radiusM, signal),
+      ]);
 
-      const result = {
-        facilities,
-        resolved,
-        source: 'OpenStreetMap',
-        radiusM,
-        error: facilities.length ? null : 'no-results',
-      };
-      cacheSet(cacheKey, result);
-      return result;
-    } catch (err) {
-      const result = {
-        facilities: [],
-        resolved,
-        source: 'OpenStreetMap',
-        radiusM,
-        error: err?.name === 'AbortError' ? 'aborted' : 'osm-unavailable',
-      };
-      cacheSet(cacheKey, result);
-      return result;
-    } finally {
-      inFlight.delete(cacheKey);
+      const photon = photonResult.status === 'fulfilled' ? photonResult.value : { facilities: [], succeeded: 0 };
+      const nominatim = nominatimResult.status === 'fulfilled' ? nominatimResult.value : { facilities: [], succeeded: 0 };
+
+      if (photon.succeeded > 0 || nominatim.succeeded > 0) providerReachable = true;
+      facilities = filterAndRank([...photon.facilities, ...nominatim.facilities], resolved, radiusM);
+      usedRadius = radiusM;
+      if (facilities.length >= MIN_RESULTS_BEFORE_WIDEN) break;
     }
+
+    const result = {
+      facilities,
+      resolved,
+      source: 'OpenStreetMap',
+      radiusM: usedRadius,
+      error: facilities.length ? null : providerReachable ? 'no-results' : 'osm-unavailable',
+    };
+
+    cacheSet(cacheKey, result);
+    inFlight.delete(cacheKey);
+    return result;
   })();
 
   inFlight.set(cacheKey, task);
