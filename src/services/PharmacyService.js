@@ -19,9 +19,11 @@ const NOMINATIM_TIMEOUT_MS = 6000;
 const NOMINATIM_MIN_INTERVAL_MS = 1100; // Nominatim policy: at most 1 request/second
 const GEO_TIMEOUT_MS = 10000;
 
-// Search area. Start at 25 km (a city + its outskirts); widen to 50 km only when very
-// few facilities exist nearby, so remote locations still get results.
-const SEARCH_RADII_M = [25000, 50000];
+// Search area: nearest-first, widening up to 5000 km. A single huge query makes the
+// providers return far-away matches first, so we start local (25 km) and widen only
+// when there are too few facilities around — a rural report can still reach 5000 km.
+// Results are always sorted nearest-first.
+const SEARCH_RADII_M = [25000, 100000, 500000, 5000000];
 const MIN_RESULTS_BEFORE_WIDEN = 3;
 const MAX_FACILITIES = 30;
 const CACHE_TTL_MS = 10 * 60 * 1000;
@@ -94,10 +96,10 @@ function boundingBox(lat, lon, radiusM) {
   const dLat = radiusM / 111320;
   const dLon = radiusM / (111320 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)));
   return {
-    south: lat - dLat,
-    north: lat + dLat,
-    west: lon - dLon,
-    east: lon + dLon,
+    south: Math.max(-85, lat - dLat),
+    north: Math.min(85, lat + dLat),
+    west: Math.max(-180, lon - dLon),
+    east: Math.min(180, lon + dLon),
   };
 }
 
@@ -233,7 +235,7 @@ async function fetchPhotonRound(resolved, radiusM, signal) {
       const url =
         `${PHOTON_URL}?q=${encodeURIComponent(term.q)}` +
         `&osm_tag=${encodeURIComponent(term.tag)}` +
-        `&bbox=${bbox}&limit=40&lang=en`;
+        `&bbox=${bbox}&lat=${resolved.lat}&lon=${resolved.lon}&limit=40&lang=en`;
       try {
         const data = await fetchJson(url, {
           timeoutMs: PHOTON_TIMEOUT_MS,
@@ -349,7 +351,7 @@ export async function fetchNearbyMedicalFacilities({ location, lat, lon, radius,
     };
   }
 
-  const cacheKey = `fac:${resolved.lat.toFixed(3)},${resolved.lon.toFixed(3)}:${radius || 'auto'}:v2`;
+  const cacheKey = `fac:${resolved.lat.toFixed(3)},${resolved.lon.toFixed(3)}:${radius || 'auto'}:v4`;
   if (!force) {
     const cached = cacheGet(cacheKey);
     if (cached !== undefined) return { ...cached, cached: true };
