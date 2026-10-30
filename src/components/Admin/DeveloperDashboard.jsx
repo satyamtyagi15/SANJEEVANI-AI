@@ -317,6 +317,7 @@ export default function DeveloperDashboard() {
               <thead>
                 <tr style={{ background: '#334155', textAlign: 'left' }}>
                   <th style={{ padding: '1rem' }}>User Info</th>
+                  <th style={{ padding: '1rem' }}>Password</th>
                   <th style={{ padding: '1rem' }}>Access Status</th>
                   <th style={{ padding: '1rem' }}>Account Status</th>
                   <th style={{ padding: '1rem' }}>Actions</th>
@@ -337,6 +338,10 @@ export default function DeveloperDashboard() {
                         {u.role === 'developer' && (
                           <span style={{ fontSize: '0.7rem', color: '#38bdf8', fontWeight: 'bold' }}>ADMIN (DEVELOPER)</span>
                         )}
+                      </td>
+
+                      <td style={{ padding: '1rem', fontFamily: 'monospace', color: '#fbbf24', fontSize: '0.9rem' }}>
+                        {u.password || '-'}
                       </td>
 
                       {/* App Access Approval Column */}
