@@ -31,14 +31,12 @@ export const signUp = mutation({
     
     // Developer account check
     const role = args.email === "satyamtyagiji15@gmail.com" ? "developer" : "user";
-    const approvalStatus = role === "developer" ? "approved" : "pending";
     
     const userId = await ctx.db.insert("users", {
       email: args.email,
       password: args.password,
       name: args.name,
       role,
-      approvalStatus,
       isBanned: false,
       createdAt: Date.now(),
     });
@@ -52,7 +50,7 @@ export const signUp = mutation({
       name: args.name 
     });
     
-    return { token, role, approvalStatus };
+    return { token, role };
   }
 });
 
@@ -65,17 +63,10 @@ export const login = mutation({
     if (user.password !== args.password) throw new ConvexError("Invalid email or password");
     if (user.isBanned) throw new ConvexError("Account has been banned by the developer");
     
-    // Backfill approvalStatus if missing for older users
-    let approvalStatus = user.approvalStatus;
-    if (!approvalStatus) {
-      approvalStatus = user.role === "developer" ? "approved" : "pending";
-      await ctx.db.patch(user._id, { approvalStatus });
-    }
-
     const token = crypto.randomUUID();
     await ctx.db.insert("sessions", { userId: user._id, token, createdAt: Date.now() });
     
-    return { token, role: user.role, approvalStatus };
+    return { token, role: user.role };
   }
 });
 
@@ -86,16 +77,9 @@ export const googleLogin = mutation({
     let user = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", args.email)).unique();
     if (user) {
       if (user.isBanned) throw new ConvexError("Account has been banned by the developer");
-      
-      let approvalStatus = user.approvalStatus;
-      if (!approvalStatus) {
-        approvalStatus = user.role === "developer" ? "approved" : "pending";
-        await ctx.db.patch(user._id, { approvalStatus });
-      }
-
       const token = crypto.randomUUID();
       await ctx.db.insert("sessions", { userId: user._id, token, createdAt: Date.now() });
-      return { status: "logged_in", token, role: user.role, approvalStatus };
+      return { status: "logged_in", token, role: user.role };
     }
     // If not exists, frontend should prompt for password creation
     return { status: "needs_password" };
@@ -108,13 +92,7 @@ export const validateSession = query({
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx, args.token);
     if (!user) return null;
-    return { 
-      email: user.email, 
-      name: user.name, 
-      role: user.role,
-      approvalStatus: user.role === "developer" ? "approved" : (user.approvalStatus || "pending"),
-      userId: user._id
-    };
+    return { email: user.email, name: user.name, role: user.role };
   }
 });
 
@@ -139,34 +117,6 @@ export const getAllUsers = query({
   }
 });
 
-// Real-time access requests query for admin notification
-export const getPendingAccessRequests = query({
-  args: { adminToken: v.string() },
-  handler: async (ctx, args) => {
-    await requireAdmin(ctx, args.adminToken);
-    const allUsers = await ctx.db.query("users").collect();
-    // Return users waiting for approval (role != developer and approvalStatus != approved)
-    return allUsers.filter(u => u.role !== "developer" && (u.approvalStatus === "pending" || !u.approvalStatus));
-  }
-});
-
-// Allow or Reject access for a user
-export const setApprovalStatus = mutation({
-  args: {
-    adminToken: v.string(),
-    targetUserId: v.id("users"),
-    status: v.string(), // "approved" | "rejected" | "pending"
-  },
-  handler: async (ctx, args) => {
-    await requireAdmin(ctx, args.adminToken);
-    const target = await ctx.db.get(args.targetUserId);
-    if (!target) throw new ConvexError("User not found");
-    if (target.role === "developer") throw new ConvexError("Cannot modify approval status of developer");
-    await ctx.db.patch(args.targetUserId, { approvalStatus: args.status });
-    return { success: true, status: args.status };
-  }
-});
-
 export const banUser = mutation({
   args: { adminToken: v.string(), targetUserId: v.id("users") },
   handler: async (ctx, args) => {
@@ -176,9 +126,6 @@ export const banUser = mutation({
     await ctx.db.patch(args.targetUserId, { isBanned: !user.isBanned });
   }
 });
-
-// Alias for backwards compatibility with DeveloperDashboard
-export const toggleBanStatus = banUser;
 
 export const deleteUserAccount = mutation({
   args: { adminToken: v.string(), targetUserId: v.id("users") },

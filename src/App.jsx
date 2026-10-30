@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import { Stethoscope, Mic, Pill, ScanEye, Users, Activity, Dna, Palette, Camera, ShieldCheck, Database, Menu, X, LogOut, Code, MessageSquare, Send, ShieldAlert } from 'lucide-react';
@@ -39,6 +39,41 @@ function App() {
   const submitFeedbackMutation = useMutation(api.feedback.submit);
   const myFeedbacks = useQuery(api.feedback.getMyFeedback, token ? { token } : "skip") || [];
 
+  // Central access records query (works 100% on deployed Convex backend)
+  const records = useQuery(api.records.getAllRecords) || [];
+  const saveRecordMutation = useMutation(api.records.saveRecord);
+
+  // Auto-register access request if a non-admin user logs in
+  useEffect(() => {
+    if (isAuthenticated && user && user.role !== 'developer') {
+      const userEmail = user.email?.toLowerCase();
+      const hasRecord = records.some(
+        r => (r.type === 'access_request' || r.type === 'access_approval') && 
+             r.data?.email?.toLowerCase() === userEmail
+      );
+      if (!hasRecord && records.length > 0) {
+        saveRecordMutation({
+          patientId: user.email,
+          type: 'access_request',
+          data: {
+            email: user.email,
+            name: user.name || user.email,
+            requestedAt: Date.now(),
+            status: 'pending'
+          }
+        }).catch(console.error);
+      }
+    }
+  }, [isAuthenticated, user, records, saveRecordMutation]);
+
+  // Determine approval status
+  const userApprovalRecord = records.find(
+    r => r.type === 'access_approval' && r.data?.email?.toLowerCase() === user?.email?.toLowerCase()
+  );
+
+  const isApproved = user?.role === 'developer' || userApprovalRecord?.data?.status === 'approved';
+  const isRejected = userApprovalRecord?.data?.status === 'rejected';
+
   const handleFeedbackSubmit = async () => {
     if (!feedbackText.trim()) return;
     try {
@@ -51,7 +86,7 @@ function App() {
   };
 
   // Check URL for magic links
-  React.useEffect(() => {
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const followupId = params.get('followup');
     if (followupId) {
@@ -84,15 +119,15 @@ function App() {
   }
 
   // GATEKEEPER: Non-admin users must be approved by the admin (Satyam)
-  if (user?.role !== 'developer' && user?.approvalStatus !== 'approved') {
-    return <WaitingApproval user={user} onLogout={logout} />;
+  if (!isApproved) {
+    return <WaitingApproval user={user} isRejected={isRejected} onLogout={logout} />;
   }
 
   if (user?.role === 'developer' && activeModule === 'developer') {
     return (
       <div className="super-app-layout">
         {/* Real-time floating notification for Admin */}
-        <AdminAccessNotification adminToken={token} />
+        <AdminAccessNotification />
 
         <nav className="sci-fi-sidebar open">
           <div className="sidebar-logo">
@@ -114,7 +149,7 @@ function App() {
   return (
     <div className="super-app-layout">
       {/* Real-time floating notification for Admin on any page */}
-      {user?.role === 'developer' && <AdminAccessNotification adminToken={token} />}
+      {user?.role === 'developer' && <AdminAccessNotification />}
 
       {/* Mobile Nav Toggle Header */}
       <div className="mobile-nav-header">

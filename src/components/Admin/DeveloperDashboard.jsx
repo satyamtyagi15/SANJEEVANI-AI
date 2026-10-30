@@ -1,23 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { useCustomAuth } from '../../context/AuthContext';
-import { ShieldCheck, UserX, Key, Trash2, Search, LogOut, Check, X, Bell, UserCheck, ShieldAlert } from 'lucide-react';
+import { ShieldCheck, UserX, Key, Trash2, Search, LogOut, Check, X, Bell } from 'lucide-react';
 
 export default function DeveloperDashboard() {
   const { token, user, logout } = useCustomAuth();
   
   const users = useQuery(api.auth.getAllUsers, token ? { adminToken: token } : "skip") || [];
   const feedbacks = useQuery(api.feedback.getAllFeedback, token ? { adminToken: token } : "skip") || [];
+  const records = useQuery(api.records.getAllRecords) || [];
   
-  const banMutation = useMutation(api.auth.toggleBanStatus);
+  const banMutation = useMutation(api.auth.banUser);
   const deleteMutation = useMutation(api.auth.deleteUserAccount);
   const changePassword = useMutation(api.auth.changeUserPassword);
   const resolveFeedbackMutation = useMutation(api.feedback.resolveFeedback);
-  const setApprovalMutation = useMutation(api.auth.setApprovalStatus);
+  const saveRecordMutation = useMutation(api.records.saveRecord);
+  const deleteRecordMutation = useMutation(api.records.deleteRecord);
 
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("users");
+  const [activeTab, setActiveTab] = useState("requests");
   const [newPasswords, setNewPasswords] = useState({});
   const [replyText, setReplyText] = useState({});
   const [actionLoading, setActionLoading] = useState(null);
@@ -26,7 +28,27 @@ export default function DeveloperDashboard() {
     return <div style={{ padding: '2rem', color: '#f87171' }}>Access Denied. Developer only.</div>;
   }
 
-  const pendingUsers = users.filter(u => u.role !== 'developer' && (u.approvalStatus === 'pending' || !u.approvalStatus));
+  // Approved and Rejected Sets
+  const approvalsMap = new Map();
+  records.forEach(r => {
+    if (r.type === 'access_approval' && r.data?.email) {
+      approvalsMap.set(r.data.email.toLowerCase(), r);
+    }
+  });
+
+  // Distinct pending requests
+  const pendingMap = new Map();
+  records.forEach(r => {
+    if (r.type === 'access_request' && r.data?.email) {
+      const email = r.data.email.toLowerCase();
+      const existingApproval = approvalsMap.get(email);
+      if (!existingApproval && !pendingMap.has(email)) {
+        pendingMap.set(email, r);
+      }
+    }
+  });
+
+  const pendingRequests = Array.from(pendingMap.values());
 
   const handleBan = async (targetUserId) => {
     try { await banMutation({ adminToken: token, targetUserId }); } 
@@ -55,12 +77,33 @@ export default function DeveloperDashboard() {
     }
   };
 
-  const handleApproval = async (targetUserId, status) => {
+  const handleApproval = async (email, name, status, reqRecordId = null) => {
     try {
-      setActionLoading(targetUserId);
-      await setApprovalMutation({ adminToken: token, targetUserId, status });
+      setActionLoading(email);
+      // Remove any existing approval/rejection for this email
+      const existingApproval = approvalsMap.get(email.toLowerCase());
+      if (existingApproval) {
+        await deleteRecordMutation({ recordId: existingApproval._id });
+      }
+
+      // Add new approval status
+      await saveRecordMutation({
+        patientId: email,
+        type: 'access_approval',
+        data: {
+          email,
+          name: name || email,
+          status, // 'approved' or 'rejected'
+          decidedAt: Date.now()
+        }
+      });
+
+      // If resolving a pending request, delete the request item
+      if (reqRecordId) {
+        await deleteRecordMutation({ recordId: reqRecordId });
+      }
     } catch (e) {
-      alert("Error updating status: " + (e.data || e.message));
+      alert("Error updating access status: " + (e.message || e));
     } finally {
       setActionLoading(null);
     }
@@ -112,9 +155,9 @@ export default function DeveloperDashboard() {
             alignItems: 'center',
             gap: '0.5rem'
           }}>
-          <Bell size={18} color={pendingUsers.length > 0 ? '#fcd34d' : '#94a3b8'} />
+          <Bell size={18} color={pendingRequests.length > 0 ? '#fcd34d' : '#94a3b8'} />
           <span>Access Requests</span>
-          {pendingUsers.length > 0 && (
+          {pendingRequests.length > 0 && (
             <span style={{
               background: '#ef4444',
               color: '#fff',
@@ -124,7 +167,7 @@ export default function DeveloperDashboard() {
               fontWeight: 'bold',
               boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
             }}>
-              {pendingUsers.length} NEW
+              {pendingRequests.length} NEW
             </span>
           )}
         </button>
@@ -150,11 +193,11 @@ export default function DeveloperDashboard() {
               Pending Access Approvals
             </h2>
             <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: 0 }}>
-              These users have signed up and logged in. They are currently locked on the <em>"Waiting for Admin's Approval"</em> screen. Allow or reject their access below.
+              These users want to explore Sanjeevani AI. They are currently locked on the <em>"Waiting for Admin's Approval"</em> screen. Allow or reject access below.
             </p>
           </div>
 
-          {pendingUsers.length === 0 ? (
+          {pendingRequests.length === 0 ? (
             <div style={{
               background: '#1e293b',
               borderRadius: '12px',
@@ -168,86 +211,89 @@ export default function DeveloperDashboard() {
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.25rem' }}>
-              {pendingUsers.map(u => (
-                <div key={u._id} style={{
-                  background: '#1e293b',
-                  borderRadius: '12px',
-                  padding: '1.5rem',
-                  border: '1px solid #f59e0b',
-                  boxShadow: '0 4px 15px rgba(245, 158, 11, 0.15)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <h3 style={{ margin: '0 0 0.25rem', fontSize: '1.1rem', color: '#fff' }}>
-                        {u.name || 'Unnamed User'}
-                      </h3>
-                      <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{u.email}</div>
+              {pendingRequests.map(req => {
+                const email = req.data?.email;
+                return (
+                  <div key={req._id} style={{
+                    background: '#1e293b',
+                    borderRadius: '12px',
+                    padding: '1.5rem',
+                    border: '1px solid #f59e0b',
+                    boxShadow: '0 4px 15px rgba(245, 158, 11, 0.15)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <h3 style={{ margin: '0 0 0.25rem', fontSize: '1.1rem', color: '#fff' }}>
+                          {req.data?.name || 'Unnamed User'}
+                        </h3>
+                        <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{email}</div>
+                      </div>
+                      <span style={{
+                        background: 'rgba(245, 158, 11, 0.2)',
+                        color: '#fcd34d',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold',
+                        padding: '0.25rem 0.65rem',
+                        borderRadius: '999px',
+                        border: '1px solid #f59e0b'
+                      }}>
+                        WAITING
+                      </span>
                     </div>
-                    <span style={{
-                      background: 'rgba(245, 158, 11, 0.2)',
-                      color: '#fcd34d',
-                      fontSize: '0.75rem',
-                      fontWeight: 'bold',
-                      padding: '0.25rem 0.65rem',
-                      borderRadius: '999px',
-                      border: '1px solid #f59e0b'
-                    }}>
-                      WAITING
-                    </span>
-                  </div>
 
-                  <div style={{ fontSize: '0.8rem', color: '#cbd5e1', background: '#0f172a', padding: '0.75rem', borderRadius: '8px' }}>
-                    <div><strong>Signed Up:</strong> {new Date(u.createdAt).toLocaleString()}</div>
-                    <div style={{ marginTop: '0.25rem', color: '#38bdf8' }}>Status: Blocked until approved</div>
-                  </div>
+                    <div style={{ fontSize: '0.8rem', color: '#cbd5e1', background: '#0f172a', padding: '0.75rem', borderRadius: '8px' }}>
+                      <div><strong>Requested:</strong> {new Date(req.savedAt || req.data?.requestedAt || Date.now()).toLocaleString()}</div>
+                      <div style={{ marginTop: '0.25rem', color: '#38bdf8' }}>Status: Blocked until approved</div>
+                    </div>
 
-                  <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto' }}>
-                    <button
-                      disabled={actionLoading === u._id}
-                      onClick={() => handleApproval(u._id, 'approved')}
-                      style={{
-                        flex: 1,
-                        background: '#10b981',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '0.75rem',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem',
-                        boxShadow: '0 4px 10px rgba(16, 185, 129, 0.3)'
-                      }}>
-                      <Check size={18} /> Allow Access
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto' }}>
+                      <button
+                        disabled={actionLoading === email}
+                        onClick={() => handleApproval(email, req.data?.name, 'approved', req._id)}
+                        style={{
+                          flex: 1,
+                          background: '#10b981',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '0.75rem',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.5rem',
+                          boxShadow: '0 4px 10px rgba(16, 185, 129, 0.3)'
+                        }}>
+                        <Check size={18} /> Allow Access
+                      </button>
 
-                    <button
-                      disabled={actionLoading === u._id}
-                      onClick={() => handleApproval(u._id, 'rejected')}
-                      style={{
-                        flex: 1,
-                        background: 'rgba(239, 68, 68, 0.2)',
-                        color: '#f87171',
-                        border: '1px solid #ef4444',
-                        borderRadius: '8px',
-                        padding: '0.75rem',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem'
-                      }}>
-                      <X size={18} /> Reject Access
-                    </button>
+                      <button
+                        disabled={actionLoading === email}
+                        onClick={() => handleApproval(email, req.data?.name, 'rejected', req._id)}
+                        style={{
+                          flex: 1,
+                          background: 'rgba(239, 68, 68, 0.2)',
+                          color: '#f87171',
+                          border: '1px solid #ef4444',
+                          borderRadius: '8px',
+                          padding: '0.75rem',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.5rem'
+                        }}>
+                        <X size={18} /> Reject Access
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -271,16 +317,17 @@ export default function DeveloperDashboard() {
               <thead>
                 <tr style={{ background: '#334155', textAlign: 'left' }}>
                   <th style={{ padding: '1rem' }}>User Info</th>
-                  <th style={{ padding: '1rem' }}>App Access</th>
+                  <th style={{ padding: '1rem' }}>Access Status</th>
                   <th style={{ padding: '1rem' }}>Account Status</th>
                   <th style={{ padding: '1rem' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.map(u => {
-                  const isApproved = u.role === 'developer' || u.approvalStatus === 'approved';
-                  const isRejected = u.approvalStatus === 'rejected';
-                  const isPending = !isApproved && !isRejected;
+                  const emailLower = u.email?.toLowerCase();
+                  const approvalRecord = approvalsMap.get(emailLower);
+                  const isApproved = u.role === 'developer' || approvalRecord?.data?.status === 'approved';
+                  const isRejected = approvalRecord?.data?.status === 'rejected';
 
                   return (
                     <tr key={u._id} style={{ borderBottom: '1px solid #334155' }}>
@@ -310,7 +357,7 @@ export default function DeveloperDashboard() {
                               APPROVED
                             </span>
                             <button
-                              onClick={() => handleApproval(u._id, 'rejected')}
+                              onClick={() => handleApproval(u.email, u.name, 'rejected')}
                               style={{ background: 'transparent', border: 'none', color: '#f87171', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}>
                               Revoke
                             </button>
@@ -329,7 +376,7 @@ export default function DeveloperDashboard() {
                               REJECTED
                             </span>
                             <button
-                              onClick={() => handleApproval(u._id, 'approved')}
+                              onClick={() => handleApproval(u.email, u.name, 'approved')}
                               style={{ background: 'transparent', border: 'none', color: '#34d399', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}>
                               Allow
                             </button>
@@ -348,12 +395,12 @@ export default function DeveloperDashboard() {
                               PENDING
                             </span>
                             <button
-                              onClick={() => handleApproval(u._id, 'approved')}
+                              onClick={() => handleApproval(u.email, u.name, 'approved')}
                               style={{ background: '#10b981', color: '#fff', border: 'none', padding: '0.25rem 0.5rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>
                               Allow
                             </button>
                             <button
-                              onClick={() => handleApproval(u._id, 'rejected')}
+                              onClick={() => handleApproval(u.email, u.name, 'rejected')}
                               style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.25rem 0.5rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>
                               Reject
                             </button>

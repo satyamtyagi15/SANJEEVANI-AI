@@ -1,34 +1,71 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
-import { Bell, Check, X, ShieldAlert, User, ChevronRight } from 'lucide-react';
+import { Bell, Check, X, User } from 'lucide-react';
 
-export default function AdminAccessNotification({ adminToken }) {
-  const pendingRequests = useQuery(
-    api.auth.getPendingAccessRequests, 
-    adminToken ? { adminToken } : "skip"
-  ) || [];
+export default function AdminAccessNotification() {
+  const records = useQuery(api.records.getAllRecords) || [];
+  const saveRecordMutation = useMutation(api.records.saveRecord);
+  const deleteRecordMutation = useMutation(api.records.deleteRecord);
 
-  const setApprovalMutation = useMutation(api.auth.setApprovalStatus);
-  const [processingId, setProcessingId] = useState(null);
+  const [processingEmail, setProcessingEmail] = useState(null);
   const [isMinimized, setIsMinimized] = useState(false);
 
-  if (!pendingRequests || pendingRequests.length === 0) {
+  // Emails that have already been approved or rejected
+  const approvedEmails = new Set(
+    records
+      .filter(r => r.type === 'access_approval' && r.data?.status === 'approved')
+      .map(r => r.data?.email?.toLowerCase())
+  );
+
+  const rejectedEmails = new Set(
+    records
+      .filter(r => r.type === 'access_approval' && r.data?.status === 'rejected')
+      .map(r => r.data?.email?.toLowerCase())
+  );
+
+  // Distinct pending requests that are not yet decided
+  const pendingMap = new Map();
+  records.forEach(r => {
+    if (r.type === 'access_request' && r.data?.email) {
+      const email = r.data.email.toLowerCase();
+      if (!approvedEmails.has(email) && !rejectedEmails.has(email) && !pendingMap.has(email)) {
+        pendingMap.set(email, r);
+      }
+    }
+  });
+
+  const pendingRequests = Array.from(pendingMap.values());
+
+  if (pendingRequests.length === 0) {
     return null; // No pending requests, render nothing
   }
 
-  const handleDecision = async (userId, status) => {
+  const handleDecision = async (req, decision) => {
+    const userEmail = req.data?.email;
+    if (!userEmail) return;
+
     try {
-      setProcessingId(userId);
-      await setApprovalMutation({
-        adminToken,
-        targetUserId: userId,
-        status,
+      setProcessingEmail(userEmail);
+
+      // Save the approval status record
+      await saveRecordMutation({
+        patientId: userEmail,
+        type: 'access_approval',
+        data: {
+          email: userEmail,
+          name: req.data?.name || userEmail,
+          status: decision, // 'approved' or 'rejected'
+          decidedAt: Date.now()
+        }
       });
+
+      // Remove the pending request record
+      await deleteRecordMutation({ recordId: req._id });
     } catch (err) {
-      alert("Error updating access status: " + (err.data || err.message));
+      alert("Error updating access status: " + (err.message || err));
     } finally {
-      setProcessingId(null);
+      setProcessingEmail(null);
     }
   };
 
@@ -131,10 +168,10 @@ export default function AdminAccessNotification({ adminToken }) {
                   <div>
                     <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                       <User size={14} color="#38bdf8" />
-                      {req.name || 'Unnamed User'}
+                      {req.data?.name || 'User'}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '2px' }}>
-                      {req.email}
+                      {req.data?.email}
                     </div>
                   </div>
                   <span style={{
@@ -163,8 +200,8 @@ export default function AdminAccessNotification({ adminToken }) {
                 {/* Allow & Reject Buttons */}
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
                   <button
-                    disabled={processingId === req._id}
-                    onClick={() => handleDecision(req._id, 'approved')}
+                    disabled={processingEmail === req.data?.email}
+                    onClick={() => handleDecision(req, 'approved')}
                     style={{
                       flex: 1,
                       background: '#10b981',
@@ -174,7 +211,7 @@ export default function AdminAccessNotification({ adminToken }) {
                       padding: '0.55rem',
                       fontWeight: '700',
                       fontSize: '0.85rem',
-                      cursor: processingId === req._id ? 'not-allowed' : 'pointer',
+                      cursor: processingEmail === req.data?.email ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -186,8 +223,8 @@ export default function AdminAccessNotification({ adminToken }) {
                   </button>
 
                   <button
-                    disabled={processingId === req._id}
-                    onClick={() => handleDecision(req._id, 'rejected')}
+                    disabled={processingEmail === req.data?.email}
+                    onClick={() => handleDecision(req, 'rejected')}
                     style={{
                       flex: 1,
                       background: 'rgba(239, 68, 68, 0.2)',
@@ -197,7 +234,7 @@ export default function AdminAccessNotification({ adminToken }) {
                       padding: '0.55rem',
                       fontWeight: '700',
                       fontSize: '0.85rem',
-                      cursor: processingId === req._id ? 'not-allowed' : 'pointer',
+                      cursor: processingEmail === req.data?.email ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -215,4 +252,3 @@ export default function AdminAccessNotification({ adminToken }) {
     </div>
   );
 }
-

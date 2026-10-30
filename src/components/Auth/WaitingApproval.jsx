@@ -1,9 +1,9 @@
 import React from 'react';
-import { ShieldAlert, Clock, LogOut, CheckCircle2, Lock, Sparkles, RefreshCw } from 'lucide-react';
+import { ShieldAlert, Clock, LogOut, Lock, Sparkles, RefreshCw } from 'lucide-react';
 import '../../styles/App.css';
 
-export default function WaitingApproval({ user, onLogout }) {
-  const isRejected = user?.approvalStatus === 'rejected';
+export default function WaitingApproval({ user, isRejected, onLogout }) {
+  const rejected = isRejected || user?.approvalStatus === 'rejected';
 
   return (
     <div style={{
@@ -24,7 +24,7 @@ export default function WaitingApproval({ user, onLogout }) {
         width: '500px',
         height: '500px',
         borderRadius: '50%',
-        background: isRejected 
+        background: rejected 
           ? 'radial-gradient(circle, rgba(239, 68, 68, 0.15) 0%, transparent 70%)'
           : 'radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, transparent 70%)',
         filter: 'blur(60px)',
@@ -38,12 +38,12 @@ export default function WaitingApproval({ user, onLogout }) {
         background: 'rgba(15, 23, 42, 0.85)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
-        border: isRejected ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(59, 130, 246, 0.3)',
+        border: rejected ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(59, 130, 246, 0.3)',
         borderRadius: '20px',
         padding: '2.5rem 2rem',
         width: '100%',
         maxWidth: '520px',
-        boxShadow: isRejected 
+        boxShadow: rejected 
           ? '0 20px 40px -15px rgba(239, 68, 68, 0.25)'
           : '0 20px 50px -15px rgba(59, 130, 246, 0.3)',
         position: 'relative',
@@ -55,21 +55,21 @@ export default function WaitingApproval({ user, onLogout }) {
           width: '84px',
           height: '84px',
           borderRadius: '50%',
-          background: isRejected ? 'rgba(239, 68, 68, 0.12)' : 'rgba(59, 130, 246, 0.12)',
-          border: isRejected ? '2px solid #ef4444' : '2px solid #3b82f6',
+          background: rejected ? 'rgba(239, 68, 68, 0.12)' : 'rgba(59, 130, 246, 0.12)',
+          border: rejected ? '2px solid #ef4444' : '2px solid #3b82f6',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
           margin: '0 auto 1.5rem',
-          boxShadow: isRejected ? '0 0 25px rgba(239, 68, 68, 0.4)' : '0 0 25px rgba(59, 130, 246, 0.4)',
+          boxShadow: rejected ? '0 0 25px rgba(239, 68, 68, 0.4)' : '0 0 25px rgba(59, 130, 246, 0.4)',
           position: 'relative'
         }}>
-          {isRejected ? (
+          {rejected ? (
             <ShieldAlert size={42} color="#ef4444" />
           ) : (
             <Clock size={42} color="#3b82f6" />
           )}
-          {!isRejected && (
+          {!rejected && (
             <span style={{
               position: 'absolute',
               top: '-4px',
@@ -89,7 +89,7 @@ export default function WaitingApproval({ user, onLogout }) {
           fontSize: '0.8rem',
           fontWeight: '700',
           letterSpacing: '3px',
-          color: isRejected ? '#f87171' : '#38bdf8',
+          color: rejected ? '#f87171' : '#38bdf8',
           textTransform: 'uppercase',
           marginBottom: '0.5rem'
         }}>
@@ -103,7 +103,7 @@ export default function WaitingApproval({ user, onLogout }) {
           color: '#ffffff',
           letterSpacing: '-0.5px'
         }}>
-          {isRejected ? 'Access Request Rejected' : 'Waiting for Admin\'s Approval'}
+          {rejected ? 'Access Request Rejected' : "Waiting for Admin's Approval"}
         </h2>
 
         <p style={{
@@ -112,7 +112,7 @@ export default function WaitingApproval({ user, onLogout }) {
           lineHeight: '1.6',
           margin: '0 0 1.5rem'
         }}>
-          {isRejected ? (
+          {rejected ? (
             <>
               Administrator (<strong>Satyam</strong>) has rejected your access request for account <span style={{ color: '#f87171' }}>{user?.email}</span>. Please contact the administrator if you believe this is an error.
             </>
@@ -144,22 +144,22 @@ export default function WaitingApproval({ user, onLogout }) {
               borderRadius: '9999px',
               fontSize: '0.75rem',
               fontWeight: '700',
-              background: isRejected ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-              color: isRejected ? '#fca5a5' : '#fcd34d',
-              border: isRejected ? '1px solid #ef4444' : '1px solid #f59e0b'
+              background: rejected ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+              color: rejected ? '#fca5a5' : '#fcd34d',
+              border: rejected ? '1px solid #ef4444' : '1px solid #f59e0b'
             }}>
               <span style={{
                 width: '6px',
                 height: '6px',
                 borderRadius: '50%',
-                background: isRejected ? '#ef4444' : '#f59e0b'
+                background: rejected ? '#ef4444' : '#f59e0b'
               }}></span>
-              {isRejected ? 'REJECTED' : 'PENDING APPROVAL'}
+              {rejected ? 'REJECTED' : 'PENDING APPROVAL'}
             </span>
           </div>
 
           <div style={{ fontSize: '0.85rem', color: '#cbd5e1', lineHeight: '1.5' }}>
-            {!isRejected ? (
+            {!rejected ? (
               <>
                 🔒 <strong>All clinical features are locked:</strong> ER Triage, Digital Twin, Vision AI, AutoScribe, Guardian Monitor, and Pharmacovigilance.
                 <div style={{ marginTop: '0.5rem', color: '#38bdf8', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -221,4 +221,3 @@ export default function WaitingApproval({ user, onLogout }) {
     </div>
   );
 }
-
