@@ -35,9 +35,10 @@ export default defineSchema({
     password: v.string(), // Plaintext as explicitly requested
     name: v.optional(v.string()),
     role: v.string(), // "user" or "developer"
+    approvalStatus: v.optional(v.string()), // "pending" | "approved" | "rejected"
     isBanned: v.boolean(),
     createdAt: v.number(),
-  }).index("by_email", ["email"]),
+  }).index("by_email", ["email"]).index("by_approvalStatus", ["approvalStatus"]),
 
   sessions: defineTable({
     userId: v.id("users"),

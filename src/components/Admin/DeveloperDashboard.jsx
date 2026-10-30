@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { useCustomAuth } from '../../context/AuthContext';
-import { ShieldCheck, UserX, Key, Trash2, Search, LogOut } from 'lucide-react';
+import { ShieldCheck, UserX, Key, Trash2, Search, LogOut, Check, X, Bell, UserCheck, ShieldAlert } from 'lucide-react';
 
 export default function DeveloperDashboard() {
   const { token, user, logout } = useCustomAuth();
@@ -14,15 +14,19 @@ export default function DeveloperDashboard() {
   const deleteMutation = useMutation(api.auth.deleteUserAccount);
   const changePassword = useMutation(api.auth.changeUserPassword);
   const resolveFeedbackMutation = useMutation(api.feedback.resolveFeedback);
+  const setApprovalMutation = useMutation(api.auth.setApprovalStatus);
 
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("users");
   const [newPasswords, setNewPasswords] = useState({});
   const [replyText, setReplyText] = useState({});
+  const [actionLoading, setActionLoading] = useState(null);
 
   if (!user || user.role !== 'developer') {
     return <div style={{ padding: '2rem', color: '#f87171' }}>Access Denied. Developer only.</div>;
   }
+
+  const pendingUsers = users.filter(u => u.role !== 'developer' && (u.approvalStatus === 'pending' || !u.approvalStatus));
 
   const handleBan = async (targetUserId) => {
     try { await banMutation({ adminToken: token, targetUserId }); } 
@@ -48,6 +52,17 @@ export default function DeveloperDashboard() {
       setNewPasswords(prev => ({ ...prev, [targetUserId]: '' }));
     } catch(e) {
       alert(e.message);
+    }
+  };
+
+  const handleApproval = async (targetUserId, status) => {
+    try {
+      setActionLoading(targetUserId);
+      await setApprovalMutation({ adminToken: token, targetUserId, status });
+    } catch (e) {
+      alert("Error updating status: " + (e.data || e.message));
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -81,19 +96,164 @@ export default function DeveloperDashboard() {
         </button>
       </div>
       
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+      {/* Navigation Tabs */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+        <button 
+          onClick={() => setActiveTab("requests")}
+          style={{
+            padding: '0.75rem 1.5rem',
+            borderRadius: '8px',
+            background: activeTab === "requests" ? '#3b82f6' : '#1e293b',
+            color: '#fff',
+            border: activeTab === "requests" ? '1px solid #60a5fa' : '1px solid #334155',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+          <Bell size={18} color={pendingUsers.length > 0 ? '#fcd34d' : '#94a3b8'} />
+          <span>Access Requests</span>
+          {pendingUsers.length > 0 && (
+            <span style={{
+              background: '#ef4444',
+              color: '#fff',
+              fontSize: '0.75rem',
+              padding: '0.15rem 0.5rem',
+              borderRadius: '999px',
+              fontWeight: 'bold',
+              boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
+            }}>
+              {pendingUsers.length} NEW
+            </span>
+          )}
+        </button>
+
         <button 
           onClick={() => setActiveTab("users")}
           style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', background: activeTab === "users" ? '#3b82f6' : '#1e293b', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
-          Users Management
+          All Users ({users.length})
         </button>
+
         <button 
           onClick={() => setActiveTab("feedbacks")}
           style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', background: activeTab === "feedbacks" ? '#3b82f6' : '#1e293b', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
-          User Feedbacks
+          User Feedbacks ({feedbacks.length})
         </button>
       </div>
 
+      {/* Access Requests Tab */}
+      {activeTab === "requests" && (
+        <div>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.5rem', color: '#f8fafc' }}>
+              Pending Access Approvals
+            </h2>
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: 0 }}>
+              These users have signed up and logged in. They are currently locked on the <em>"Waiting for Admin's Approval"</em> screen. Allow or reject their access below.
+            </p>
+          </div>
+
+          {pendingUsers.length === 0 ? (
+            <div style={{
+              background: '#1e293b',
+              borderRadius: '12px',
+              padding: '3rem',
+              textAlign: 'center',
+              border: '1px solid #334155'
+            }}>
+              <ShieldCheck size={48} color="#10b981" style={{ margin: '0 auto 1rem' }} />
+              <h3 style={{ margin: '0 0 0.5rem', color: '#f1f5f9' }}>All Caught Up!</h3>
+              <p style={{ color: '#94a3b8', margin: 0 }}>No users are currently waiting for access approval.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.25rem' }}>
+              {pendingUsers.map(u => (
+                <div key={u._id} style={{
+                  background: '#1e293b',
+                  borderRadius: '12px',
+                  padding: '1.5rem',
+                  border: '1px solid #f59e0b',
+                  boxShadow: '0 4px 15px rgba(245, 158, 11, 0.15)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <h3 style={{ margin: '0 0 0.25rem', fontSize: '1.1rem', color: '#fff' }}>
+                        {u.name || 'Unnamed User'}
+                      </h3>
+                      <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{u.email}</div>
+                    </div>
+                    <span style={{
+                      background: 'rgba(245, 158, 11, 0.2)',
+                      color: '#fcd34d',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      padding: '0.25rem 0.65rem',
+                      borderRadius: '999px',
+                      border: '1px solid #f59e0b'
+                    }}>
+                      WAITING
+                    </span>
+                  </div>
+
+                  <div style={{ fontSize: '0.8rem', color: '#cbd5e1', background: '#0f172a', padding: '0.75rem', borderRadius: '8px' }}>
+                    <div><strong>Signed Up:</strong> {new Date(u.createdAt).toLocaleString()}</div>
+                    <div style={{ marginTop: '0.25rem', color: '#38bdf8' }}>Status: Blocked until approved</div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto' }}>
+                    <button
+                      disabled={actionLoading === u._id}
+                      onClick={() => handleApproval(u._id, 'approved')}
+                      style={{
+                        flex: 1,
+                        background: '#10b981',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '0.75rem',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        boxShadow: '0 4px 10px rgba(16, 185, 129, 0.3)'
+                      }}>
+                      <Check size={18} /> Allow Access
+                    </button>
+
+                    <button
+                      disabled={actionLoading === u._id}
+                      onClick={() => handleApproval(u._id, 'rejected')}
+                      style={{
+                        flex: 1,
+                        background: 'rgba(239, 68, 68, 0.2)',
+                        color: '#f87171',
+                        border: '1px solid #ef4444',
+                        borderRadius: '8px',
+                        padding: '0.75rem',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem'
+                      }}>
+                      <X size={18} /> Reject Access
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Users Management Tab */}
       {activeTab === "users" && (
         <>
           <div style={{ marginBottom: '1.5rem', position: 'relative', maxWidth: '400px' }}>
@@ -110,57 +270,138 @@ export default function DeveloperDashboard() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#334155', textAlign: 'left' }}>
-                  <th style={{ padding: '1rem' }}>Email</th>
-                  <th style={{ padding: '1rem' }}>Password</th>
-                  <th style={{ padding: '1rem' }}>Name</th>
-                  <th style={{ padding: '1rem' }}>Status</th>
+                  <th style={{ padding: '1rem' }}>User Info</th>
+                  <th style={{ padding: '1rem' }}>App Access</th>
+                  <th style={{ padding: '1rem' }}>Account Status</th>
                   <th style={{ padding: '1rem' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map(u => (
-                  <tr key={u._id} style={{ borderBottom: '1px solid #334155' }}>
-                    <td style={{ padding: '1rem' }}>{u.email}</td>
-                    <td style={{ padding: '1rem', fontFamily: 'monospace', color: '#fbbf24' }}>{u.password || '-'}</td>
-                    <td style={{ padding: '1rem' }}>{u.name || '-'}</td>
-                    <td style={{ padding: '1rem' }}>
-                      <span style={{ color: u.isBanned ? '#f87171' : '#4ade80' }}>
-                        {u.isBanned ? 'Banned' : 'Active'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      {u.role !== 'developer' && (
-                        <>
-                          <button onClick={() => handleBan(u._id)} style={{ background: u.isBanned ? '#4ade80' : '#f59e0b', color: '#fff', border: 'none', padding: '0.5rem', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            <UserX size={14} /> {u.isBanned ? 'Unban' : 'Ban'}
-                          </button>
-                          <button onClick={() => handleDelete(u._id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.5rem', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            <Trash2 size={14} /> Delete
-                          </button>
-                          <div style={{ display: 'flex', gap: '0.25rem' }}>
-                            <input 
-                              type="text" 
-                              placeholder="New Pass" 
-                              value={newPasswords[u._id] || ''}
-                              onChange={(e) => setNewPasswords(prev => ({ ...prev, [u._id]: e.target.value }))}
-                              style={{ padding: '0.25rem', borderRadius: '4px', border: '1px solid #334155', background: '#0f172a', color: '#fff', width: '100px' }}
-                            />
-                            <button onClick={() => handleChangePassword(u._id)} style={{ background: '#3b82f6', color: '#fff', border: 'none', padding: '0.5rem', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                              <Key size={14} /> Change
+                {filteredUsers.map(u => {
+                  const isApproved = u.role === 'developer' || u.approvalStatus === 'approved';
+                  const isRejected = u.approvalStatus === 'rejected';
+                  const isPending = !isApproved && !isRejected;
+
+                  return (
+                    <tr key={u._id} style={{ borderBottom: '1px solid #334155' }}>
+                      <td style={{ padding: '1rem' }}>
+                        <div style={{ fontWeight: '600', color: '#fff' }}>{u.name || 'Unnamed'}</div>
+                        <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{u.email}</div>
+                        {u.role === 'developer' && (
+                          <span style={{ fontSize: '0.7rem', color: '#38bdf8', fontWeight: 'bold' }}>ADMIN (DEVELOPER)</span>
+                        )}
+                      </td>
+
+                      {/* App Access Approval Column */}
+                      <td style={{ padding: '1rem' }}>
+                        {u.role === 'developer' ? (
+                          <span style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '0.85rem' }}>Full Developer Access</span>
+                        ) : isApproved ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{
+                              background: 'rgba(16, 185, 129, 0.2)',
+                              color: '#34d399',
+                              padding: '0.25rem 0.65rem',
+                              borderRadius: '999px',
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold',
+                              border: '1px solid #10b981'
+                            }}>
+                              APPROVED
+                            </span>
+                            <button
+                              onClick={() => handleApproval(u._id, 'rejected')}
+                              style={{ background: 'transparent', border: 'none', color: '#f87171', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}>
+                              Revoke
                             </button>
                           </div>
-                        </>
-                      )}
-                      {u.role === 'developer' && <span style={{ color: '#94a3b8' }}>Admin</span>}
-                    </td>
-                  </tr>
-                ))}
+                        ) : isRejected ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{
+                              background: 'rgba(239, 68, 68, 0.2)',
+                              color: '#f87171',
+                              padding: '0.25rem 0.65rem',
+                              borderRadius: '999px',
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold',
+                              border: '1px solid #ef4444'
+                            }}>
+                              REJECTED
+                            </span>
+                            <button
+                              onClick={() => handleApproval(u._id, 'approved')}
+                              style={{ background: 'transparent', border: 'none', color: '#34d399', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}>
+                              Allow
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{
+                              background: 'rgba(245, 158, 11, 0.2)',
+                              color: '#fcd34d',
+                              padding: '0.25rem 0.65rem',
+                              borderRadius: '999px',
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold',
+                              border: '1px solid #f59e0b'
+                            }}>
+                              PENDING
+                            </span>
+                            <button
+                              onClick={() => handleApproval(u._id, 'approved')}
+                              style={{ background: '#10b981', color: '#fff', border: 'none', padding: '0.25rem 0.5rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                              Allow
+                            </button>
+                            <button
+                              onClick={() => handleApproval(u._id, 'rejected')}
+                              style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.25rem 0.5rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                      </td>
+
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{ color: u.isBanned ? '#f87171' : '#4ade80', fontWeight: '600', fontSize: '0.85rem' }}>
+                          {u.isBanned ? 'Banned' : 'Active'}
+                        </span>
+                      </td>
+
+                      <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {u.role !== 'developer' && (
+                          <>
+                            <button onClick={() => handleBan(u._id)} style={{ background: u.isBanned ? '#4ade80' : '#f59e0b', color: '#fff', border: 'none', padding: '0.45rem 0.65rem', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem' }}>
+                              <UserX size={14} /> {u.isBanned ? 'Unban' : 'Ban'}
+                            </button>
+                            <button onClick={() => handleDelete(u._id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.45rem 0.65rem', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem' }}>
+                              <Trash2 size={14} /> Delete
+                            </button>
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                              <input 
+                                type="text" 
+                                placeholder="New Pass" 
+                                value={newPasswords[u._id] || ''}
+                                onChange={(e) => setNewPasswords(prev => ({ ...prev, [u._id]: e.target.value }))}
+                                style={{ padding: '0.25rem', borderRadius: '4px', border: '1px solid #334155', background: '#0f172a', color: '#fff', width: '90px', fontSize: '0.8rem' }}
+                              />
+                              <button onClick={() => handleChangePassword(u._id)} style={{ background: '#3b82f6', color: '#fff', border: 'none', padding: '0.45rem', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem' }}>
+                                <Key size={14} />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                        {u.role === 'developer' && <span style={{ color: '#94a3b8' }}>Admin</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </>
       )}
 
+      {/* Feedbacks Tab */}
       {activeTab === "feedbacks" && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {feedbacks.map((fb) => (

@@ -4,6 +4,8 @@ import { api } from '../convex/_generated/api';
 import { Stethoscope, Mic, Pill, ScanEye, Users, Activity, Dna, Palette, Camera, ShieldCheck, Database, Menu, X, LogOut, Code, MessageSquare, Send, ShieldAlert } from 'lucide-react';
 import { useCustomAuth } from './context/AuthContext';
 import CustomAuth from './components/Auth/CustomAuth';
+import WaitingApproval from './components/Auth/WaitingApproval';
+import AdminAccessNotification from './components/Admin/AdminAccessNotification';
 import DeveloperDashboard from './components/Admin/DeveloperDashboard';
 import PatientKiosk from './components/PatientKiosk';
 import DoctorDashboard from './components/DoctorDashboard';
@@ -81,9 +83,17 @@ function App() {
     return <CustomAuth />;
   }
 
+  // GATEKEEPER: Non-admin users must be approved by the admin (Satyam)
+  if (user?.role !== 'developer' && user?.approvalStatus !== 'approved') {
+    return <WaitingApproval user={user} onLogout={logout} />;
+  }
+
   if (user?.role === 'developer' && activeModule === 'developer') {
     return (
       <div className="super-app-layout">
+        {/* Real-time floating notification for Admin */}
+        <AdminAccessNotification adminToken={token} />
+
         <nav className="sci-fi-sidebar open">
           <div className="sidebar-logo">
             <h1>ADMIN</h1>
@@ -103,6 +113,9 @@ function App() {
 
   return (
     <div className="super-app-layout">
+      {/* Real-time floating notification for Admin on any page */}
+      {user?.role === 'developer' && <AdminAccessNotification adminToken={token} />}
+
       {/* Mobile Nav Toggle Header */}
       <div className="mobile-nav-header">
         <div className="mobile-logo">
