@@ -44,6 +44,12 @@ function App() {
   const records = useQuery(api.records.getAllRecords) || [];
   const saveRecordMutation = useMutation(api.records.saveRecord);
 
+  // Check if current user is a Doctor (either in user session or by doctor_profile in records)
+  const isUserDoctor = user?.role === 'doctor' || records.some(
+    r => r.type === 'doctor_profile' && 
+    (r.data?.email?.toLowerCase() === user?.email?.toLowerCase() || r.patientId?.toLowerCase() === user?.email?.toLowerCase())
+  );
+
   // Auto-register access request if a non-admin user logs in
   useEffect(() => {
     if (isAuthenticated && user && user.role !== 'developer') {
@@ -59,20 +65,22 @@ function App() {
           data: {
             email: user.email,
             name: user.name || user.email,
+            role: isUserDoctor ? 'doctor' : 'patient',
             requestedAt: Date.now(),
             status: 'pending'
           }
         }).catch(console.error);
       }
     }
-  }, [isAuthenticated, user, records, saveRecordMutation]);
+  }, [isAuthenticated, user, records, saveRecordMutation, isUserDoctor]);
 
-  // Determine approval status
+  // Determine approval status - SATYAM TYAGI (DEVELOPER ADMIN) STRICT GATEKEEPER
+  // Only developer role or users explicitly approved by admin in Dev Dashboard are approved.
   const userApprovalRecord = records.find(
     r => r.type === 'access_approval' && r.data?.email?.toLowerCase() === user?.email?.toLowerCase()
   );
 
-  const isApproved = user?.role === 'developer' || user?.role === 'doctor' || user?.role === 'patient' || userApprovalRecord?.data?.status === 'approved';
+  const isApproved = user?.role === 'developer' || userApprovalRecord?.data?.status === 'approved';
   const isRejected = userApprovalRecord?.data?.status === 'rejected';
 
   const handleFeedbackSubmit = async () => {
@@ -176,16 +184,24 @@ function App() {
           <div style={{
             margin: '0.4rem 1rem 0.8rem',
             padding: '0.5rem 0.75rem',
-            background: user.role === 'doctor' ? 'rgba(5, 150, 105, 0.2)' : 'rgba(59, 130, 246, 0.15)',
-            border: `1px solid ${user.role === 'doctor' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
+            background: user.role === 'developer' 
+              ? 'rgba(245, 158, 11, 0.15)' 
+              : isUserDoctor 
+                ? 'rgba(5, 150, 105, 0.2)' 
+                : 'rgba(59, 130, 246, 0.15)',
+            border: `1px solid ${user.role === 'developer' 
+              ? 'rgba(245, 158, 11, 0.3)' 
+              : isUserDoctor 
+                ? 'rgba(16, 185, 129, 0.3)' 
+                : 'rgba(59, 130, 246, 0.3)'}`,
             borderRadius: '8px',
             fontSize: '0.75rem',
-            color: user.role === 'doctor' ? '#34d399' : '#93c5fd'
+            color: user.role === 'developer' ? '#fcd34d' : isUserDoctor ? '#34d399' : '#93c5fd'
           }}>
             <div style={{ fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              {user.role === 'doctor' ? '🩺 Verified Doctor' : user.role === 'developer' ? '⚡ Developer Admin' : '👤 Patient'}
+              {user.role === 'developer' ? '⚡ Developer Admin' : isUserDoctor ? '🩺 Verified Doctor' : '👤 Patient'}
             </div>
-            <div style={{ color: '#cbd5e1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div style={{ color: '#cbd5e1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '2px' }}>
               {user.name || user.email}
             </div>
           </div>

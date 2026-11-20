@@ -88,22 +88,35 @@ export default function CustomAuth() {
               isOnline: true,
             }
           });
+        } else {
+          await saveRecordMutation({
+            patientId: cleanEmail,
+            type: 'patient_profile',
+            data: {
+              name: displayName,
+              email: cleanEmail,
+              role: 'patient',
+              concern: 'General Clinical Consultation',
+              registeredAt: Date.now()
+            }
+          });
         }
 
-        // 3. Auto-approve access record so doctor or patient can access app directly
+        // 3. Register access request with status 'pending' (STRICT ADMIN APPROVAL GATEKEEPER)
+        // Admin (Satyam Tyagi) must explicitly approve from Dev Dashboard before user can enter.
         await saveRecordMutation({
           patientId: cleanEmail,
-          type: 'access_approval',
+          type: 'access_request',
           data: {
             email: cleanEmail,
             name: displayName,
-            status: 'approved',
             role: role,
-            decidedAt: Date.now()
+            requestedAt: Date.now(),
+            status: 'pending'
           }
         });
 
-        // 4. Auto-login if token returned, or prompt to sign in
+        // 4. Auto-login into pending state or prompt to sign in
         if (res && res.token) {
           login(res.token);
         } else {
@@ -111,8 +124,8 @@ export default function CustomAuth() {
           setPassword('');
           setSuccessMsg(
             role === 'doctor' 
-              ? "Doctor clinical profile registered successfully! Please sign in." 
-              : "Patient account created successfully! Please sign in."
+              ? "Doctor profile registered! Waiting for Developer Admin approval before access is granted." 
+              : "Patient account registered! Waiting for Developer Admin approval before access is granted."
           );
         }
       }
