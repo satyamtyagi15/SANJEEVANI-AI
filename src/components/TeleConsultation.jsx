@@ -450,13 +450,13 @@ export default function TeleConsultation({ user }) {
     setRecordingDuration(0);
   };
 
-  // Bulletproof Full-Screen Evidence Screenshot Capture
-  const captureFullScreenshot = async () => {
+  // Capture full screen evidence snapshot immediately
+  const captureFullScreenshot = async (target = reportTarget, context = reportContext) => {
     try {
-      // 1. Snapshot any active HTML5 <video> elements on the page (WebRTC remote & local feeds)
-      const videoElements = Array.from(document.querySelectorAll('video'));
+      // 1. Snapshot all active video elements into temporary canvases
+      const videos = Array.from(document.querySelectorAll('video'));
       const videoFrames = [];
-      for (const v of videoElements) {
+      for (const v of videos) {
         try {
           if (v.videoWidth > 0 && v.videoHeight > 0) {
             const vCanvas = document.createElement('canvas');
@@ -476,14 +476,17 @@ export default function TeleConsultation({ user }) {
         }
       }
 
-      // 2. Capture document with html2canvas
+      // 2. Capture document with html2canvas (target body or main container)
       const targetElement = document.querySelector('.teleconsult-container') || document.body;
       const canvas = await html2canvas(targetElement, {
-        backgroundColor: '#020617',
-        scale: 0.65, // ~70KB payload size to stay well under Convex 1MB document limit
+        backgroundColor: '#0b1120',
+        scale: 0.65, // ~70KB payload size to stay well under Convex document limit
         useCORS: true,
         allowTaint: true,
         logging: false,
+        ignoreElements: (el) => {
+          return el.classList?.contains('report-modal-overlay') || el.id === 'report-modal';
+        },
         onclone: (clonedDoc) => {
           // Replace video elements in clone with image snapshots so WebRTC streams render cleanly
           const clonedVideos = Array.from(clonedDoc.querySelectorAll('video'));
@@ -506,7 +509,7 @@ export default function TeleConsultation({ user }) {
       return canvas.toDataURL('image/jpeg', 0.65);
     } catch (err) {
       console.error("Full screenshot capture error:", err);
-      // Fallback canvas with timestamp and context
+      // High-fidelity fallback canvas with timestamp, target and consultation metadata
       try {
         const fbCanvas = document.createElement('canvas');
         fbCanvas.width = 960;
@@ -522,8 +525,12 @@ export default function TeleConsultation({ user }) {
         ctx.fillStyle = '#38bdf8';
         ctx.font = '16px Inter, sans-serif';
         ctx.fillText(`Recorded At: ${new Date().toLocaleString()}`, 50, 115);
-        ctx.fillText(`Target: ${reportTarget?.name || 'User'} (${reportTarget?.email || 'N/A'})`, 50, 145);
-        ctx.fillText(`Context: ${reportContext || 'Consultation Violation'}`, 50, 175);
+        ctx.fillText(`Target: ${target?.name || 'User'} (${target?.email || 'N/A'})`, 50, 145);
+        ctx.fillText(`Context: ${context || 'Consultation Violation'}`, 50, 175);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '14px Inter, sans-serif';
+        ctx.fillText(`Session Peer: ${activeCallPartner?.name || activeChatPeer?.name || 'Active Session'}`, 50, 210);
+        ctx.fillText(`Meeting Code: ${activeRoomId || 'Direct Chat'}`, 50, 235);
         return fbCanvas.toDataURL('image/jpeg', 0.65);
       } catch (e) {
         return null;
@@ -531,18 +538,25 @@ export default function TeleConsultation({ user }) {
     }
   };
 
-  // Open Incident Report Modal with Auto-Screenshot Capture
+  // Open Incident Report Modal - Captures live screen IMMEDIATELY on click
   const handleOpenReport = async (target, context) => {
     setIsCapturingScreenshot(true);
     setReportTarget(target);
     setReportContext(context);
     setReportScreenshot(null);
     setReportDetails('');
-    setIsReportModalOpen(true);
 
-    const screenshotUrl = await captureFullScreenshot();
-    setReportScreenshot(screenshotUrl);
-    setIsCapturingScreenshot(false);
+    try {
+      // 1. Capture screen right at the instant Report button is clicked (before modal covers it)
+      const screenshotUrl = await captureFullScreenshot(target, context);
+      setReportScreenshot(screenshotUrl);
+    } catch (err) {
+      console.warn("Screen capture failed on click:", err);
+    } finally {
+      setIsCapturingScreenshot(false);
+      // 2. Open report modal with screenshot ready
+      setIsReportModalOpen(true);
+    }
   };
 
   // Submit Incident Report to Convex
@@ -551,6 +565,12 @@ export default function TeleConsultation({ user }) {
     if (!reportTarget) return;
 
     try {
+      // Ensure screenshot is always attached
+      let finalScreenshot = reportScreenshot;
+      if (!finalScreenshot) {
+        finalScreenshot = await captureFullScreenshot(reportTarget, reportContext);
+      }
+
       await saveRecordMutation({
         patientId: userEmail,
         type: 'incident_report',
@@ -564,7 +584,7 @@ export default function TeleConsultation({ user }) {
           context: reportContext,
           reason: reportReason,
           details: reportDetails,
-          screenshot: reportScreenshot,
+          screenshot: finalScreenshot,
           meetingCode: activeRoomId || null,
           timestamp: Date.now(),
           status: 'pending'

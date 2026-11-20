@@ -16,10 +16,8 @@ export default function DeveloperDashboard() {
   const changePassword = useMutation(api.auth.changeUserPassword);
   const cleanupDummyProfilesMutation = useMutation(api.auth.cleanupAllDummyDoctorProfiles);
   const resolveFeedbackMutation = useMutation(api.feedback.resolveFeedback);
-  const deleteFeedbackMutation = useMutation(api.feedback.deleteFeedback);
   const saveRecordMutation = useMutation(api.records.saveRecord);
   const deleteRecordMutation = useMutation(api.records.deleteRecord);
-  const syncUserRolesMutation = useMutation(api.auth.syncUserRoles);
 
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("requests");
@@ -38,13 +36,6 @@ export default function DeveloperDashboard() {
     ...localDeletedFeedbackIds
   ]);
   const visibleFeedbacks = feedbacks.filter(fb => !allDeletedFeedbackIds.has(fb._id));
-
-  // Auto-sync user roles in database for doctors & patients
-  React.useEffect(() => {
-    if (token && user?.role === 'developer') {
-      syncUserRolesMutation({ adminToken: token }).catch(console.warn);
-    }
-  }, [token, user]);
 
   if (!user || user.role !== 'developer') {
     return <div style={{ padding: '2rem', color: '#f87171' }}>Access Denied. Developer only.</div>;
@@ -176,12 +167,8 @@ export default function DeveloperDashboard() {
   const handleDeleteFeedback = async (feedbackId) => {
     if (!window.confirm("Are you sure you want to permanently delete this user feedback?")) return;
     try {
-      // 1. Attempt direct cloud deletion
-      try {
-        await deleteFeedbackMutation({ adminToken: token, feedbackId });
-      } catch (err) {
-        console.warn("Direct feedback delete error, fallback to record tracking:", err);
-      }
+      // 1. Mark resolved/deleted in feedbacks table
+      await resolveFeedbackMutation({ adminToken: token, feedbackId, reply: "[DELETED BY ADMIN]" }).catch(() => {});
 
       // 2. Persist deletion in savedRecords so it is permanently filtered out for all admin sessions
       await saveRecordMutation({
