@@ -252,6 +252,9 @@ function App() {
               <Code size={20} color="#fcd34d" /> <span style={{ color: '#fcd34d' }}>Dev Dashboard</span>
             </li>
           )}
+          <li onClick={() => { setIsFeedbackOpen(true); setIsNavOpen(false); }} style={{ cursor: 'pointer' }}>
+            <MessageSquare size={20} color="#38bdf8" /> <span style={{ color: '#38bdf8' }}>Report / Feedback</span>
+          </li>
           <li onClick={logout}>
             <LogOut size={20} color="#f87171" /> <span style={{ color: '#f87171' }}>Logout</span>
           </li>
@@ -290,14 +293,6 @@ function App() {
         {followUpPatientId && (
           <PatientFollowUp patientId={followUpPatientId} onClose={() => setFollowUpPatientId(null)} />
         )}
-
-        <button 
-          onClick={() => setIsFeedbackOpen(true)}
-          style={{
-            position: 'fixed', bottom: '2rem', right: '2rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '50px', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)', zIndex: 100
-          }}>
-          <MessageSquare size={20} /> Report / Feedback
-        </button>
 
         {isFeedbackOpen && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 200, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>

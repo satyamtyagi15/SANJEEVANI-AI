@@ -6,7 +6,8 @@ import {
   Calendar, Clock, User, Stethoscope, Send, CheckCircle, Plus, 
   Search, Copy, Check, FileText, Activity, Shield, Maximize2, 
   Minimize2, AlertCircle, Sparkles, X, ChevronRight, PhoneCall, Trash2,
-  Users, UserCheck, HeartPulse, Radio
+  Users, UserCheck, HeartPulse, Radio, Image as ImageIcon, Paperclip, 
+  Smile, Film, Music, Download
 } from 'lucide-react';
 import '../styles/App.css';
 
@@ -19,6 +20,13 @@ const RTC_CONFIG = {
     { urls: 'stun:global.stun.twilio.com:3478' }
   ]
 };
+
+// Quick Emotes List for Healthcare & Reactions
+const EMOTES_LIST = [
+  '👍', '❤️', '🙏', '🩺', '💊', '🩹', '💉', '🏥', '👨‍⚕️', '👩‍⚕️', 
+  '🤒', '😷', '🧬', '🚑', '📋', '🧪', '🔬', '😊', '😂', '👏', 
+  '🤝', '🔥', '💯', '🆗', '⚠️', '⭐'
+];
 
 export default function TeleConsultation({ user }) {
   const userEmail = user?.email?.toLowerCase() || 'guest@sanjeevani.ai';
@@ -85,7 +93,21 @@ export default function TeleConsultation({ user }) {
   // Chat Dashboard State
   const [activeChatPeer, setActiveChatPeer] = useState(null);
   const [chatInput, setChatInput] = useState('');
+  const [selectedAttachment, setSelectedAttachment] = useState(null); // { type, url, name, size }
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // File input refs for chat attachments
+  const imageInputRef = useRef(null);
+  const videoInputRef = useRef(null);
+  const audioInputRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  // Chat scroll refs
   const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const isUserScrolledUp = useRef(false);
+  const prevPeerEmailRef = useRef(null);
 
   // =========================================================================
   // DYNAMIC DATA EXTRACTION (ZERO HARDCODED PROFILES)
@@ -100,7 +122,6 @@ export default function TeleConsultation({ user }) {
   const allPatients = (() => {
     const patientMap = new Map();
 
-    // From patient_profile records
     allRecords.filter(r => r.type === 'patient_profile' && (r.data?.email || r.patientId)).forEach(r => {
       const email = (r.data?.email || r.patientId).toLowerCase();
       if (!patientMap.has(email)) {
@@ -117,7 +138,6 @@ export default function TeleConsultation({ user }) {
       }
     });
 
-    // From access_request / access_approval
     allRecords.filter(r => (r.type === 'access_request' || r.type === 'access_approval') && r.data?.email).forEach(r => {
       const email = r.data.email.toLowerCase();
       const isDoc = allRecords.some(d => d.type === 'doctor_profile' && d.data?.email?.toLowerCase() === email);
@@ -136,7 +156,6 @@ export default function TeleConsultation({ user }) {
       }
     });
 
-    // From booked appointments
     allRecords.filter(r => r.type === 'tele_appointment' && r.data?.patientEmail).forEach(r => {
       const email = r.data.patientEmail.toLowerCase();
       if (patientMap.has(email)) {
@@ -156,7 +175,6 @@ export default function TeleConsultation({ user }) {
       }
     });
 
-    // From triage assessments
     allRecords.filter(r => r.type === 'triage_assessment' && r.patientId).forEach(r => {
       const email = r.patientId.toLowerCase();
       if (email.includes('@') && !patientMap.has(email)) {
@@ -215,16 +233,115 @@ export default function TeleConsultation({ user }) {
     return () => clearInterval(interval);
   }, [isInCall]);
 
-  // Scroll chat
+  // Handle chat peer change and auto-scroll without fighting user scroll
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [currentChatMessages, isCallChatOpen]);
+    const peerEmail = activeChatPeer?.email || activeChatPeer?.patientEmail || activeChatPeer?.doctorEmail;
+    if (peerEmail && peerEmail !== prevPeerEmailRef.current) {
+      prevPeerEmailRef.current = peerEmail;
+      isUserScrolledUp.current = false;
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 50);
+    }
+  }, [activeChatPeer]);
+
+  // Track user scroll position in chat to allow smooth reading upwards
+  const handleChatScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    isUserScrolledUp.current = (scrollHeight - scrollTop - clientHeight) > 80;
+  };
+
+  // Image compression utility before uploading (max 1000px, quality 0.75)
+  const compressImage = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1000;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.75));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Handle attachment selection (image, video, audio, file)
+  const handleFileSelect = async (e, type) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      alert("⚠️ File size exceeds 8MB. Please select a smaller file.");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      if (type === 'image') {
+        const compressedUrl = await compressImage(file);
+        setSelectedAttachment({
+          type: 'image',
+          url: compressedUrl,
+          name: file.name,
+          size: (file.size / 1024).toFixed(1) + ' KB'
+        });
+      } else {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          setSelectedAttachment({
+            type,
+            url: ev.target.result,
+            name: file.name,
+            size: (file.size / 1024).toFixed(1) + ' KB'
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err) {
+      alert("Error attaching file: " + err.message);
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  // Toggle Contact open / close in Left Sidebar
+  const handleContactClick = (peer) => {
+    const peerEmail = peer.email || peer.patientEmail || peer.doctorEmail;
+    const currentActiveEmail = activeChatPeer?.email || activeChatPeer?.patientEmail || activeChatPeer?.doctorEmail;
+
+    if (currentActiveEmail === peerEmail) {
+      // Clicking already active peer closes the chat box
+      setActiveChatPeer(null);
+    } else {
+      // Clicking opens the chat box with this peer
+      setActiveChatPeer(peer);
+      setIsEmojiPickerOpen(false);
+    }
+  };
 
   // =========================================================================
   // 100% REAL WORKING WEBRTC PEER-TO-PEER VIDEO & AUDIO ENGINE
   // =========================================================================
 
-  // Dispatch signal via BroadcastChannel (local zero-latency) and Convex (cross-device/cloud)
   const dispatchSignal = useCallback(async (sigData) => {
     if (broadcastChannelRef.current) {
       try {
@@ -247,7 +364,6 @@ export default function TeleConsultation({ user }) {
     }
   }, [saveRecordMutation]);
 
-  // Handle incoming WebRTC signals
   const handleIncomingSignal = useCallback(async (sig) => {
     if (!sig || sig.sender?.toLowerCase() === userEmail) return;
     if (sig.meetingCode !== activeRoomId) return;
@@ -257,7 +373,6 @@ export default function TeleConsultation({ user }) {
 
     try {
       if (sig.signalType === 'join') {
-        // A peer joined: if our PC is ready, create and send an offer
         if (pc.signalingState === 'stable') {
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
@@ -270,7 +385,6 @@ export default function TeleConsultation({ user }) {
         }
       } else if (sig.signalType === 'offer') {
         await pc.setRemoteDescription(new RTCSessionDescription(sig.sdp));
-        // Flush any queued candidates
         while (pendingCandidatesRef.current.length > 0) {
           const c = pendingCandidatesRef.current.shift();
           await pc.addIceCandidate(new RTCIceCandidate(c)).catch(console.warn);
@@ -320,24 +434,29 @@ export default function TeleConsultation({ user }) {
     });
   }, [allRecords, isInCall, activeRoomId, handleIncomingSignal]);
 
-  // Initialize WebRTC Call
+  // Initialize WebRTC Call (MEETING CODE STRICTLY MANDATORY)
   const startCall = async (meetingCode, partner) => {
-    const code = meetingCode || `SANJ-CONF-${Math.floor(100000 + Math.random() * 900000)}`;
-    setActiveRoomId(code);
+    const cleanCode = (meetingCode || '').trim();
+    if (!cleanCode) {
+      alert("⚠️ Meeting Code is mandatory. You cannot start or join a video call without a valid Meeting Code.");
+      return;
+    }
+
+    setActiveRoomId(cleanCode);
     setActiveCallPartner(partner || { name: isDoctor ? "Patient Consultation" : "Doctor Specialist" });
     setIsInCall(true);
     setHasRemoteStream(false);
     setIsPeerConnected(false);
     pendingCandidatesRef.current = [];
 
-    // 1. Setup BroadcastChannel for instant local cross-tab signaling
-    const bc = new BroadcastChannel('sanjeevani_webrtc_' + code);
+    // 1. BroadcastChannel for instant local signaling
+    const bc = new BroadcastChannel('sanjeevani_webrtc_' + cleanCode);
     broadcastChannelRef.current = bc;
     bc.onmessage = (event) => {
       handleIncomingSignal(event.data);
     };
 
-    // 2. Get User Media (Camera & Mic)
+    // 2. Local Media
     let stream = null;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
@@ -353,7 +472,7 @@ export default function TeleConsultation({ user }) {
       console.warn("Camera/Mic access note:", err.message);
     }
 
-    // 3. Create RTCPeerConnection
+    // 3. RTCPeerConnection
     const pc = new RTCPeerConnection(RTC_CONFIG);
     pcRef.current = pc;
 
@@ -363,7 +482,6 @@ export default function TeleConsultation({ user }) {
       });
     }
 
-    // 4. Remote track received -> attach to remoteVideoRef and play!
     pc.ontrack = (event) => {
       console.log("WebRTC Remote Track Received:", event.track.kind);
       if (event.streams && event.streams[0]) {
@@ -377,11 +495,10 @@ export default function TeleConsultation({ user }) {
       }
     };
 
-    // 5. ICE candidate generated locally -> dispatch to peer
     pc.onicecandidate = (event) => {
       if (event.candidate) {
         dispatchSignal({
-          meetingCode: code,
+          meetingCode: cleanCode,
           sender: userEmail,
           signalType: 'candidate',
           candidate: event.candidate.toJSON()
@@ -389,9 +506,7 @@ export default function TeleConsultation({ user }) {
       }
     };
 
-    // 6. Track connection state
     pc.onconnectionstatechange = () => {
-      console.log("WebRTC connection state:", pc.connectionState);
       if (pc.connectionState === 'connected') {
         setIsPeerConnected(true);
         setHasRemoteStream(true);
@@ -400,10 +515,9 @@ export default function TeleConsultation({ user }) {
       }
     };
 
-    // 7. Announce join to room
     setTimeout(() => {
       dispatchSignal({
-        meetingCode: code,
+        meetingCode: cleanCode,
         sender: userEmail,
         signalType: 'join'
       });
@@ -412,7 +526,6 @@ export default function TeleConsultation({ user }) {
 
   // End Call & Cleanup
   const handleEndCall = () => {
-    // Announce exit
     if (activeRoomId) {
       dispatchSignal({
         meetingCode: activeRoomId,
@@ -421,13 +534,11 @@ export default function TeleConsultation({ user }) {
       });
     }
 
-    // Close PC
     if (pcRef.current) {
       pcRef.current.close();
       pcRef.current = null;
     }
 
-    // Stop streams
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(t => t.stop());
       localStreamRef.current = null;
@@ -437,7 +548,6 @@ export default function TeleConsultation({ user }) {
       screenStreamRef.current = null;
     }
 
-    // Close BroadcastChannel
     if (broadcastChannelRef.current) {
       broadcastChannelRef.current.close();
       broadcastChannelRef.current = null;
@@ -481,7 +591,6 @@ export default function TeleConsultation({ user }) {
         screenStreamRef.current = screenStream;
         const screenTrack = screenStream.getVideoTracks()[0];
 
-        // Replace track in RTCPeerConnection sender
         if (pcRef.current) {
           const sender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
           if (sender) {
@@ -506,7 +615,6 @@ export default function TeleConsultation({ user }) {
       screenStreamRef.current.getTracks().forEach(t => t.stop());
       screenStreamRef.current = null;
     }
-    // Restore camera track to RTCPeerConnection
     if (pcRef.current && localStreamRef.current) {
       const cameraTrack = localStreamRef.current.getVideoTracks()[0];
       const sender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
@@ -580,10 +688,10 @@ export default function TeleConsultation({ user }) {
     }
   };
 
-  // Chat message send handler
+  // Chat message send handler (Supports text, photo, video, audio, files & emotes)
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!chatInput.trim() || !activeChatPeer) return;
+    if ((!chatInput.trim() && !selectedAttachment) || !activeChatPeer) return;
 
     const peerEmail = activeChatPeer.email || activeChatPeer.doctorEmail || activeChatPeer.patientEmail;
     const peerName = activeChatPeer.name || activeChatPeer.doctorName || activeChatPeer.patientName;
@@ -594,6 +702,7 @@ export default function TeleConsultation({ user }) {
       receiverName: peerName,
       receiverEmail: peerEmail,
       message: chatInput.trim(),
+      attachment: selectedAttachment ? { ...selectedAttachment } : null,
       timestamp: Date.now()
     };
 
@@ -604,8 +713,16 @@ export default function TeleConsultation({ user }) {
         data: newMsg
       });
       setChatInput('');
+      setSelectedAttachment(null);
+      setIsEmojiPickerOpen(false);
+
+      // Smooth scroll to bottom on new message sent by user
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
     } catch (err) {
       console.error(err);
+      alert("Error sending message: " + err.message);
     }
   };
 
@@ -669,7 +786,6 @@ export default function TeleConsultation({ user }) {
             </div>
           </div>
 
-          {/* Consultation Partner Indicator */}
           <div style={{ fontSize: '0.95rem', color: '#e2e8f0', fontWeight: '600' }}>
             Consultation with: <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>{activeCallPartner?.name || "Patient / Doctor"}</span>
           </div>
@@ -695,7 +811,6 @@ export default function TeleConsultation({ user }) {
         {/* Main Video Viewport */}
         <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#090d16', overflow: 'hidden' }}>
           
-          {/* Remote Video Stream (Voice + Video plays live!) */}
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
             
             {/* The actual remote video element playing live stream */}
@@ -725,12 +840,12 @@ export default function TeleConsultation({ user }) {
                   Connecting Real-Time Audio & Video Stream...
                 </div>
                 <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '0.5rem', maxWidth: '420px', textAlign: 'center' }}>
-                  Waiting for partner to click <strong>"Join Video Call"</strong> with Room Code: <strong style={{ color: '#fff' }}>{activeRoomId}</strong>
+                  Waiting for partner to join with Room Code: <strong style={{ color: '#fff' }}>{activeRoomId}</strong>
                 </p>
               </div>
             )}
 
-            {/* Local Webcam Picture-in-Picture (Bottom-Left) */}
+            {/* Local Webcam Picture-in-Picture */}
             <div style={{
               position: 'absolute',
               bottom: '1.5rem',
@@ -810,7 +925,6 @@ export default function TeleConsultation({ user }) {
           gap: '1.25rem',
           zIndex: 10
         }}>
-          {/* Mic Toggle */}
           <button 
             onClick={toggleMute}
             title={isMuted ? "Unmute Microphone" : "Mute Microphone"}
@@ -830,7 +944,6 @@ export default function TeleConsultation({ user }) {
             {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
           </button>
 
-          {/* Video Toggle */}
           <button 
             onClick={toggleVideo}
             title={isVideoOff ? "Start Camera" : "Stop Camera"}
@@ -850,7 +963,6 @@ export default function TeleConsultation({ user }) {
             {isVideoOff ? <VideoOff size={20} /> : <Video size={20} />}
           </button>
 
-          {/* Screen Share */}
           <button 
             onClick={toggleScreenShare}
             title={isScreenSharing ? "Stop Screen Share" : "Share Your Screen"}
@@ -870,7 +982,6 @@ export default function TeleConsultation({ user }) {
             <Share2 size={20} />
           </button>
 
-          {/* Chat Drawer Toggle */}
           <button 
             onClick={() => setIsCallChatOpen(!isCallChatOpen)}
             title="Toggle In-Call Chat"
@@ -890,7 +1001,6 @@ export default function TeleConsultation({ user }) {
             <MessageSquare size={20} />
           </button>
 
-          {/* Red End Call Button */}
           <button 
             onClick={handleEndCall}
             style={{
@@ -922,6 +1032,12 @@ export default function TeleConsultation({ user }) {
   return (
     <div className="teleconsult-container" style={{ padding: '1.5rem', color: '#f8fafc', minHeight: '100vh', background: '#0b1120', fontFamily: 'Inter, sans-serif' }}>
       
+      {/* Hidden File Inputs for Chat Attachments */}
+      <input type="file" ref={imageInputRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => handleFileSelect(e, 'image')} />
+      <input type="file" ref={videoInputRef} style={{ display: 'none' }} accept="video/*" onChange={(e) => handleFileSelect(e, 'video')} />
+      <input type="file" ref={audioInputRef} style={{ display: 'none' }} accept="audio/*" onChange={(e) => handleFileSelect(e, 'audio')} />
+      <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".pdf,.doc,.docx,.txt,.csv,application/*" onChange={(e) => handleFileSelect(e, 'file')} />
+
       {/* Top Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', background: 'rgba(15, 23, 42, 0.75)', padding: '1.25rem 1.5rem', borderRadius: '14px', border: '1px solid rgba(56, 189, 248, 0.25)', backdropFilter: 'blur(12px)' }}>
         <div>
@@ -932,7 +1048,7 @@ export default function TeleConsultation({ user }) {
             </h1>
           </div>
           <p style={{ margin: '0.35rem 0 0 0', color: '#94a3b8', fontSize: '0.9rem' }}>
-            Encrypted WebRTC Peer-to-Peer Live Video Consultations • Real-Time Doctor-Patient Messaging • Doctor-Managed Slots
+            Encrypted WebRTC Peer-to-Peer Live Video Consultations • Multimedia Chat • Doctor-Managed Scheduling
           </p>
         </div>
 
@@ -960,7 +1076,7 @@ export default function TeleConsultation({ user }) {
       </div>
 
       {/* ========================================================================= */}
-      {/* CLEAN 2-TAB NAVIGATION (NO ZOOM VIDEO ROOM TAB!) */}
+      {/* CLEAN 2-TAB NAVIGATION (MEETING CODE STRICTLY MANDATORY TO JOIN) */}
       {/* ========================================================================= */}
       <div style={{ display: 'flex', gap: '0.85rem', marginBottom: '1.5rem', borderBottom: '1px solid #1e293b', paddingBottom: '0.85rem', flexWrap: 'wrap', alignItems: 'center' }}>
         
@@ -1006,22 +1122,23 @@ export default function TeleConsultation({ user }) {
           <span>Live Chat Dashboard</span>
         </button>
 
-        {/* Quick Instant Meeting Code Joiner */}
+        {/* Quick Instant Meeting Code Joiner (MEETING CODE STRICTLY MANDATORY) */}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <input 
             type="text" 
-            placeholder="Enter Meeting Code..." 
+            placeholder="Enter Meeting Code (Mandatory)..." 
             id="quickJoinInput"
-            style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', padding: '0.5rem 0.75rem', color: '#fff', fontSize: '0.85rem', width: '190px' }}
+            style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', padding: '0.5rem 0.75rem', color: '#fff', fontSize: '0.85rem', width: '220px' }}
           />
           <button 
             onClick={() => {
               const el = document.getElementById('quickJoinInput');
-              if (el && el.value.trim()) {
-                startCall(el.value.trim());
-              } else {
-                startCall();
+              const code = el ? el.value.trim() : '';
+              if (!code) {
+                alert("⚠️ Meeting Code is mandatory. You cannot join a video call without a valid Meeting Code.");
+                return;
               }
+              startCall(code);
             }}
             style={{ background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', padding: '0.5rem 1rem', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <Video size={15} /> Join Call
@@ -1135,129 +1252,145 @@ export default function TeleConsultation({ user }) {
                     </p>
                   </div>
                 ) : (
-                  filteredPatients.map((patient, idx) => (
-                    <div 
-                      key={patient.id || patient.email || idx}
-                      style={{
-                        background: 'rgba(15, 23, 42, 0.85)',
-                        border: '1px solid #334155',
-                        borderRadius: '12px',
-                        padding: '1.25rem',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
-                        position: 'relative'
-                      }}>
-                      
-                      {/* Top Status */}
-                      <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: '#34d399' }}>
-                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34d399', boxShadow: '0 0 6px #34d399' }}></span>
-                        Ready for Consult
-                      </div>
+                  filteredPatients.map((patient, idx) => {
+                    // Check if there is an existing scheduled appointment with this patient
+                    const existingApt = appointments.find(a => (a.patientEmail || '').toLowerCase() === patient.email?.toLowerCase());
 
-                      <div>
-                        {/* Patient Header */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                          <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: 'linear-gradient(135deg, #059669, #10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2rem', color: '#fff' }}>
-                            {(patient.name || 'P').charAt(0).toUpperCase()}
+                    return (
+                      <div 
+                        key={patient.id || patient.email || idx}
+                        style={{
+                          background: 'rgba(15, 23, 42, 0.85)',
+                          border: '1px solid #334155',
+                          borderRadius: '12px',
+                          padding: '1.25rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+                          position: 'relative'
+                        }}>
+                        
+                        {/* Top Status */}
+                        <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: '#34d399' }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34d399', boxShadow: '0 0 6px #34d399' }}></span>
+                          Ready for Consult
+                        </div>
+
+                        <div>
+                          {/* Patient Header */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                            <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: 'linear-gradient(135deg, #059669, #10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2rem', color: '#fff' }}>
+                              {(patient.name || 'P').charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700', color: '#f8fafc' }}>{patient.name}</h3>
+                              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{patient.email}</div>
+                            </div>
                           </div>
-                          <div>
-                            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700', color: '#f8fafc' }}>{patient.name}</h3>
-                            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{patient.email}</div>
+
+                          {/* Health Concern */}
+                          <div style={{ background: '#1e293b', padding: '0.65rem 0.85rem', borderRadius: '8px', marginBottom: '0.85rem', borderLeft: '3px solid #38bdf8' }}>
+                            <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>
+                              Primary Health Concern / Symptom:
+                            </div>
+                            <div style={{ fontSize: '0.85rem', color: '#f1f5f9', fontWeight: '600', marginTop: '2px' }}>
+                              {patient.concern || "General Clinical Consultation"}
+                            </div>
+                          </div>
+
+                          <div style={{ fontSize: '0.8rem', color: '#cbd5e1', lineHeight: '1.5', marginBottom: '0.75rem' }}>
+                            <div><strong>Status:</strong> Registered Patient</div>
+                            <div><strong>Contact:</strong> {patient.phone || patient.email}</div>
+                            {existingApt && (
+                              <div style={{ color: '#38bdf8', marginTop: '4px' }}>
+                                <strong>Active Meeting Code:</strong> {existingApt.meetingCode}
+                              </div>
+                            )}
                           </div>
                         </div>
 
-                        {/* Health Concern */}
-                        <div style={{ background: '#1e293b', padding: '0.65rem 0.85rem', borderRadius: '8px', marginBottom: '0.85rem', borderLeft: '3px solid #38bdf8' }}>
-                          <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>
-                            Primary Health Concern / Symptom:
-                          </div>
-                          <div style={{ fontSize: '0.85rem', color: '#f1f5f9', fontWeight: '600', marginTop: '2px' }}>
-                            {patient.concern || "General Clinical Consultation"}
-                          </div>
-                        </div>
+                        {/* Doctor Action Buttons */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.15fr 1.15fr', gap: '0.4rem', borderTop: '1px solid #1e293b', paddingTop: '0.75rem' }}>
+                          <button
+                            onClick={() => {
+                              setActiveChatPeer({
+                                name: patient.name,
+                                email: patient.email,
+                                role: 'patient',
+                                specialization: `Patient: ${patient.concern || 'Consultation'}`
+                              });
+                              setActiveTab('chat');
+                            }}
+                            style={{
+                              background: '#1e293b',
+                              color: '#38bdf8',
+                              border: '1px solid #38bdf8',
+                              borderRadius: '6px',
+                              padding: '0.5rem 0.2rem',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.25rem'
+                            }}>
+                            <MessageSquare size={13} /> Chat
+                          </button>
 
-                        <div style={{ fontSize: '0.8rem', color: '#cbd5e1', lineHeight: '1.5', marginBottom: '0.75rem' }}>
-                          <div><strong>Status:</strong> Registered Patient</div>
-                          <div><strong>Contact:</strong> {patient.phone || patient.email}</div>
+                          <button
+                            onClick={() => {
+                              setSelectedBookingTarget(patient);
+                              setIsBookModalOpen(true);
+                            }}
+                            style={{
+                              background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '0.5rem 0.2rem',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.25rem'
+                            }}>
+                            <Calendar size={13} /> Fix Meeting
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              if (existingApt && existingApt.meetingCode) {
+                                startCall(existingApt.meetingCode, patient);
+                              } else {
+                                alert("⚠️ Please fix a meeting with this patient first using 'Fix Meeting' to generate a valid Meeting Code.");
+                                setSelectedBookingTarget(patient);
+                                setIsBookModalOpen(true);
+                              }
+                            }}
+                            style={{
+                              background: 'linear-gradient(135deg, #059669, #047857)',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '0.5rem 0.2rem',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.25rem'
+                            }}>
+                            <Video size={13} /> Video Call
+                          </button>
                         </div>
                       </div>
-
-                      {/* Doctor Action Buttons: Chat, Fix Meeting, Video Call */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.15fr 1.15fr', gap: '0.4rem', borderTop: '1px solid #1e293b', paddingTop: '0.75rem' }}>
-                        <button
-                          onClick={() => {
-                            setActiveChatPeer({
-                              name: patient.name,
-                              email: patient.email,
-                              role: 'patient',
-                              specialization: `Patient: ${patient.concern || 'Consultation'}`
-                            });
-                            setActiveTab('chat');
-                          }}
-                          style={{
-                            background: '#1e293b',
-                            color: '#38bdf8',
-                            border: '1px solid #38bdf8',
-                            borderRadius: '6px',
-                            padding: '0.5rem 0.2rem',
-                            fontSize: '0.8rem',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.25rem'
-                          }}>
-                          <MessageSquare size={13} /> Chat
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setSelectedBookingTarget(patient);
-                            setIsBookModalOpen(true);
-                          }}
-                          style={{
-                            background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '6px',
-                            padding: '0.5rem 0.2rem',
-                            fontSize: '0.8rem',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.25rem'
-                          }}>
-                          <Calendar size={13} /> Fix Meeting
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            startCall(`ROOM-PATIENT-${patient.email.replace(/[^a-zA-Z0-9]/g, '')}`, patient);
-                          }}
-                          style={{
-                            background: 'linear-gradient(135deg, #059669, #047857)',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '6px',
-                            padding: '0.5rem 0.2rem',
-                            fontSize: '0.8rem',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.25rem'
-                          }}>
-                          <Video size={13} /> Video Call
-                        </button>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             ) : (
@@ -1433,10 +1566,10 @@ export default function TeleConsultation({ user }) {
                       <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '0.35rem' }}>
                         <div>📅 {apt.date} • ⏰ {apt.time}</div>
                         <div style={{ marginTop: '0.2rem' }}>💬 {apt.reason}</div>
-                        <div style={{ marginTop: '0.2rem', fontFamily: 'monospace', color: '#38bdf8' }}>Code: {apt.meetingCode}</div>
+                        <div style={{ marginTop: '0.2rem', fontFamily: 'monospace', color: '#38bdf8', fontWeight: 'bold' }}>Code: {apt.meetingCode}</div>
                       </div>
 
-                      {/* Action buttons: Join Video Call & Delete/Cancel Meeting (Doctor Only) */}
+                      {/* Action buttons: Join Video Call & Delete/Cancel Meeting */}
                       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
                         <button
                           onClick={() => startCall(apt.meetingCode, { name: partnerName, email: partnerEmail })}
@@ -1491,20 +1624,34 @@ export default function TeleConsultation({ user }) {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: LIVE CHAT DASHBOARD (VIDEO CALL BUTTON REMOVED AS REQUESTED) */}
+      {/* TAB 2: LIVE CHAT DASHBOARD (TOGGLE OPEN/CLOSE, SMOOTH SCROLL, MULTIMEDIA) */}
       {/* ========================================================================= */}
       {activeTab === 'chat' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '1rem', height: 'calc(100vh - 190px)', background: '#0f172a', borderRadius: '12px', border: '1px solid #334155', overflow: 'hidden' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: activeChatPeer ? '320px minmax(0, 1fr)' : '1fr', 
+          gap: '1rem', 
+          height: 'calc(100vh - 190px)', 
+          background: '#0f172a', 
+          borderRadius: '12px', 
+          border: '1px solid #334155', 
+          overflow: 'hidden' 
+        }}>
           
-          {/* Left Contacts List */}
-          <div style={{ borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '1rem', borderBottom: '1px solid #1e293b' }}>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: '#f8fafc' }}>
-                {isDoctor ? "Patient Consultations" : isAdmin ? "Hospital Directory Contacts" : "Certified Doctors & Specialists"}
-              </h3>
+          {/* Left Contacts List (Names are NEVER hidden, clicking toggles open/close) */}
+          <div style={{ borderRight: activeChatPeer ? '1px solid #1e293b' : 'none', display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
+            <div style={{ padding: '1rem', borderBottom: '1px solid #1e293b', background: '#090d16', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: '#f8fafc' }}>
+                  {isDoctor ? "Patient Consultations" : isAdmin ? "Hospital Directory Contacts" : "Certified Doctors"}
+                </h3>
+                <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                  Click a contact to open or close chat
+                </div>
+              </div>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
               {(() => {
                 const contacts = isDoctor 
                   ? allPatients 
@@ -1519,36 +1666,75 @@ export default function TeleConsultation({ user }) {
                 }
 
                 return contacts.map((peer, idx) => {
-                  const peerName = peer.name || peer.patientName || peer.doctorName;
-                  const peerSub = peer.specialization || peer.concern || "Patient Consultation";
-                  const peerEmail = peer.email || peer.patientEmail || peer.doctorEmail;
-                  const isSelected = activeChatPeer && (activeChatPeer.email === peerEmail);
+                  const peerName = peer.name || peer.patientName || peer.doctorName || 'Contact';
+                  const peerSub = peer.specialization || peer.concern || (peer.role === 'doctor' ? 'Certified Doctor' : 'Registered Patient');
+                  const peerEmail = (peer.email || peer.patientEmail || peer.doctorEmail || '').toLowerCase();
+                  const isSelected = activeChatPeer && (activeChatPeer.email || activeChatPeer.patientEmail || activeChatPeer.doctorEmail || '').toLowerCase() === peerEmail;
 
                   return (
                     <div
                       key={idx}
-                      onClick={() => setActiveChatPeer(peer)}
+                      onClick={() => handleContactClick(peer)}
+                      title={isSelected ? "Click to close chat" : "Click to open chat"}
                       style={{
-                        padding: '0.85rem 1rem',
-                        borderBottom: '1px solid #1e293b',
+                        padding: '0.85rem',
+                        borderRadius: '10px',
                         cursor: 'pointer',
-                        background: isSelected ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
-                        borderLeft: isSelected ? '4px solid #38bdf8' : '4px solid transparent',
-                        transition: 'background 0.2s'
+                        background: isSelected ? 'rgba(56, 189, 248, 0.15)' : '#1e293b',
+                        border: isSelected ? '1px solid #38bdf8' : '1px solid transparent',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem'
                       }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                        <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#1e293b', border: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#38bdf8' }}>
-                          {peerName ? peerName.replace('Dr. ', '').charAt(0).toUpperCase() : 'U'}
+                      {/* Avatar */}
+                      <div style={{ 
+                        width: '42px', 
+                        height: '42px', 
+                        borderRadius: '50%', 
+                        background: isSelected ? 'linear-gradient(135deg, #0284c7, #38bdf8)' : '#0f172a', 
+                        border: '1px solid #334155', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        fontWeight: 'bold', 
+                        color: '#fff',
+                        flexShrink: 0
+                      }}>
+                        {peerName.replace('Dr. ', '').charAt(0).toUpperCase()}
+                      </div>
+
+                      {/* Name & Role (Wrap properly so name never gets cut off) */}
+                      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                        <div style={{ 
+                          fontWeight: '700', 
+                          fontSize: '0.92rem', 
+                          color: isSelected ? '#38bdf8' : '#f8fafc',
+                          wordBreak: 'break-word',
+                          lineHeight: '1.3'
+                        }}>
+                          {peerName}
                         </div>
-                        <div style={{ flex: 1, overflow: 'hidden' }}>
-                          <div style={{ fontWeight: '600', fontSize: '0.9rem', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {peerName}
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {peerSub}
-                          </div>
+                        <div style={{ 
+                          fontSize: '0.75rem', 
+                          color: '#94a3b8', 
+                          marginTop: '2px',
+                          overflow: 'hidden', 
+                          textOverflow: 'ellipsis', 
+                          whiteSpace: 'nowrap' 
+                        }}>
+                          {peerSub}
                         </div>
                       </div>
+
+                      {/* Active Status Badge */}
+                      {isSelected ? (
+                        <span style={{ fontSize: '0.65rem', background: '#38bdf8', color: '#0f172a', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px' }}>
+                          OPEN
+                        </span>
+                      ) : (
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></span>
+                      )}
                     </div>
                   );
                 });
@@ -1556,27 +1742,28 @@ export default function TeleConsultation({ user }) {
             </div>
           </div>
 
-          {/* Right Active Conversation Area */}
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#020617' }}>
-            {activeChatPeer ? (
-              <>
-                {/* Chat Top Bar */}
-                <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #1e293b', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff' }}>
-                      {(activeChatPeer.name || "U").replace('Dr. ', '').charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: '#f8fafc' }}>
-                        {activeChatPeer.name}
-                      </h4>
-                      <div style={{ fontSize: '0.75rem', color: '#38bdf8' }}>
-                        {activeChatPeer.specialization || activeChatPeer.concern || "Active Consultation Channel"}
-                      </div>
+          {/* Right Active Conversation Area (Only rendered if contact is selected) */}
+          {activeChatPeer ? (
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: '#020617', overflow: 'hidden' }}>
+              
+              {/* Chat Top Bar */}
+              <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #1e293b', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff' }}>
+                    {(activeChatPeer.name || "U").replace('Dr. ', '').charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: '#f8fafc' }}>
+                      {activeChatPeer.name}
+                    </h4>
+                    <div style={{ fontSize: '0.75rem', color: '#38bdf8' }}>
+                      {activeChatPeer.specialization || activeChatPeer.concern || "Active Consultation Channel"}
                     </div>
                   </div>
+                </div>
 
-                  {/* ONLY DOCTOR SEES "FIX MEETING" - VIDEO CALL BUTTON IS COMPLETELY REMOVED FROM CHAT! */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {/* ONLY DOCTOR SEES "FIX MEETING" */}
                   {isDoctor && (
                     <button
                       onClick={() => {
@@ -1588,8 +1775,8 @@ export default function TeleConsultation({ user }) {
                         color: '#fff',
                         border: 'none',
                         borderRadius: '8px',
-                        padding: '0.5rem 0.95rem',
-                        fontSize: '0.85rem',
+                        padding: '0.45rem 0.85rem',
+                        fontSize: '0.825rem',
                         fontWeight: 'bold',
                         cursor: 'pointer',
                         display: 'flex',
@@ -1597,76 +1784,275 @@ export default function TeleConsultation({ user }) {
                         gap: '0.35rem',
                         boxShadow: '0 2px 6px rgba(2, 132, 199, 0.4)'
                       }}>
-                      <Calendar size={15} /> Fix Meeting
+                      <Calendar size={14} /> Fix Meeting
                     </button>
                   )}
-                </div>
 
-                {/* Messages Stream */}
-                <div style={{ flex: 1, padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {currentChatMessages.length === 0 ? (
-                    <div style={{ textAlign: 'center', margin: 'auto', color: '#64748b' }}>
-                      <MessageSquare size={36} style={{ margin: '0 auto 0.5rem', opacity: 0.4 }} />
-                      <p>Start a secure consultation dialogue with {activeChatPeer.name}.</p>
-                    </div>
-                  ) : (
-                    currentChatMessages.map((msg, idx) => {
-                      const isMe = msg.senderEmail?.toLowerCase() === userEmail;
-                      return (
-                        <div 
-                          key={idx}
-                          style={{
-                            alignSelf: isMe ? 'flex-end' : 'flex-start',
-                            maxWidth: '70%',
-                            background: isMe ? 'linear-gradient(135deg, #0284c7, #0369a1)' : '#1e293b',
-                            color: '#fff',
-                            borderRadius: '12px',
-                            padding: '0.75rem 1rem',
-                            border: isMe ? 'none' : '1px solid #334155',
-                            boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-                          }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '0.25rem' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: isMe ? '#e0f2fe' : '#38bdf8' }}>
-                              {isMe ? "You" : msg.senderName}
-                            </span>
-                            <span style={{ fontSize: '0.65rem', color: isMe ? '#bae6fd' : '#94a3b8' }}>
-                              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: '0.875rem', lineHeight: '1.4', wordBreak: 'break-word' }}>
+                  {/* Close Chat Box Button */}
+                  <button
+                    onClick={() => setActiveChatPeer(null)}
+                    title="Close Chat (View Contacts)"
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      border: '1px solid #ef4444',
+                      color: '#f87171',
+                      borderRadius: '8px',
+                      padding: '0.45rem 0.65rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      fontSize: '0.8rem',
+                      fontWeight: 'bold'
+                    }}>
+                    <X size={15} /> Close
+                  </button>
+                </div>
+              </div>
+
+              {/* Messages Stream Container (Smooth scrolling enabled, minHeight: 0) */}
+              <div 
+                ref={chatContainerRef}
+                onScroll={handleChatScroll}
+                style={{ 
+                  flex: 1, 
+                  minHeight: 0,
+                  padding: '1.25rem', 
+                  overflowY: 'auto', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '0.85rem',
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#475569 #0f172a'
+                }}>
+                {currentChatMessages.length === 0 ? (
+                  <div style={{ textAlign: 'center', margin: 'auto', color: '#64748b' }}>
+                    <MessageSquare size={42} style={{ margin: '0 auto 0.5rem', opacity: 0.4 }} />
+                    <p style={{ margin: 0, fontSize: '0.9rem' }}>Start a secure clinical consultation dialogue with {activeChatPeer.name}.</p>
+                  </div>
+                ) : (
+                  currentChatMessages.map((msg, idx) => {
+                    const isMe = msg.senderEmail?.toLowerCase() === userEmail;
+                    return (
+                      <div 
+                        key={idx}
+                        style={{
+                          alignSelf: isMe ? 'flex-end' : 'flex-start',
+                          maxWidth: '75%',
+                          background: isMe ? 'linear-gradient(135deg, #0284c7, #0369a1)' : '#1e293b',
+                          color: '#fff',
+                          borderRadius: '12px',
+                          padding: '0.75rem 1rem',
+                          border: isMe ? 'none' : '1px solid #334155',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.25)'
+                        }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '0.35rem' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: isMe ? '#e0f2fe' : '#38bdf8' }}>
+                            {isMe ? "You" : msg.senderName}
+                          </span>
+                          <span style={{ fontSize: '0.65rem', color: isMe ? '#bae6fd' : '#94a3b8' }}>
+                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+
+                        {/* Text Message Content */}
+                        {msg.message && (
+                          <div style={{ fontSize: '0.88rem', lineHeight: '1.45', wordBreak: 'break-word' }}>
                             {msg.message}
                           </div>
-                        </div>
-                      );
-                    })
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
+                        )}
 
-                {/* Message Input Box */}
-                <form onSubmit={handleSendMessage} style={{ padding: '1rem', borderTop: '1px solid #1e293b', background: '#0f172a', display: 'flex', gap: '0.75rem' }}>
-                  <input 
-                    type="text"
-                    placeholder="Type clinical advice, symptom description, or message..."
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    style={{ flex: 1, padding: '0.75rem 1rem', background: '#020617', border: '1px solid #334155', borderRadius: '8px', color: '#fff', outline: 'none' }}
-                  />
-                  <button 
-                    type="submit"
-                    style={{ background: '#38bdf8', color: '#0f172a', border: 'none', borderRadius: '8px', padding: '0 1.25rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Send size={16} /> Send
-                  </button>
-                </form>
-              </>
-            ) : (
-              <div style={{ margin: 'auto', textAlign: 'center', color: '#64748b' }}>
-                <MessageSquare size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-                <h3>No Conversation Selected</h3>
-                <p style={{ fontSize: '0.85rem' }}>Select a contact from the left panel to begin chatting.</p>
+                        {/* Attached Multimedia (Photo, Video, Audio, Document) */}
+                        {msg.attachment && (
+                          <div style={{ marginTop: msg.message ? '0.65rem' : '0' }}>
+                            {/* Image Attachment */}
+                            {msg.attachment.type === 'image' && (
+                              <img 
+                                src={msg.attachment.url} 
+                                alt={msg.attachment.name || "Photo attachment"}
+                                style={{ maxWidth: '100%', maxHeight: '220px', borderRadius: '8px', display: 'block', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.2)' }}
+                                onClick={() => window.open(msg.attachment.url)}
+                                title="Click to view full image"
+                              />
+                            )}
+
+                            {/* Video Attachment */}
+                            {msg.attachment.type === 'video' && (
+                              <video 
+                                src={msg.attachment.url} 
+                                controls 
+                                playsInline 
+                                style={{ maxWidth: '100%', maxHeight: '220px', borderRadius: '8px', display: 'block', background: '#000' }}
+                              />
+                            )}
+
+                            {/* Audio Voice Note Attachment */}
+                            {msg.attachment.type === 'audio' && (
+                              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.5rem', borderRadius: '8px' }}>
+                                <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Music size={12} /> {msg.attachment.name || "Audio Recording"}
+                                </div>
+                                <audio src={msg.attachment.url} controls style={{ width: '100%', height: '36px' }} />
+                              </div>
+                            )}
+
+                            {/* Document / File Attachment */}
+                            {msg.attachment.type === 'file' && (
+                              <a 
+                                href={msg.attachment.url} 
+                                download={msg.attachment.name || "clinical_file"} 
+                                style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: '0.5rem', 
+                                  background: 'rgba(255,255,255,0.1)', 
+                                  padding: '0.6rem 0.85rem', 
+                                  borderRadius: '8px', 
+                                  color: '#38bdf8', 
+                                  textDecoration: 'none',
+                                  fontSize: '0.825rem',
+                                  border: '1px solid rgba(56, 189, 248, 0.3)'
+                                }}>
+                                <FileText size={18} />
+                                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {msg.attachment.name} ({msg.attachment.size})
+                                </span>
+                                <Download size={15} />
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
               </div>
-            )}
-          </div>
+
+              {/* Emoji Picker Popup Bar */}
+              {isEmojiPickerOpen && (
+                <div style={{ background: '#0f172a', borderTop: '1px solid #334155', padding: '0.75rem 1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', zIndex: 10 }}>
+                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'bold', marginRight: '0.5rem' }}>Emotes:</span>
+                  {EMOTES_LIST.map((emoji, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setChatInput(prev => prev + emoji)}
+                      style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', fontSize: '1.2rem', padding: '0.3rem 0.5rem', cursor: 'pointer', transition: 'transform 0.1s' }}>
+                      {emoji}
+                    </button>
+                  ))}
+                  <button 
+                    type="button"
+                    onClick={() => setIsEmojiPickerOpen(false)}
+                    style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+
+              {/* Attachment Preview Bar (If user selected a file to send) */}
+              {selectedAttachment && (
+                <div style={{ background: '#0f172a', borderTop: '1px solid #38bdf8', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {selectedAttachment.type === 'image' ? <ImageIcon size={18} color="#38bdf8" /> : selectedAttachment.type === 'video' ? <Film size={18} color="#a855f7" /> : selectedAttachment.type === 'audio' ? <Music size={18} color="#10b981" /> : <FileText size={18} color="#f59e0b" />}
+                    <span style={{ fontSize: '0.85rem', color: '#f8fafc', fontWeight: '600' }}>
+                      Attached {selectedAttachment.type.toUpperCase()}: {selectedAttachment.name} ({selectedAttachment.size})
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedAttachment(null)}
+                    style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px 6px' }}>
+                    <X size={18} />
+                  </button>
+                </div>
+              )}
+
+              {/* Message Input Box with Multimedia Attachments & Emotes */}
+              <form onSubmit={handleSendMessage} style={{ padding: '0.85rem 1rem', borderTop: '1px solid #1e293b', background: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                
+                {/* Photo Upload Button */}
+                <button 
+                  type="button" 
+                  title="Send Photo"
+                  onClick={() => imageInputRef.current?.click()}
+                  style={{ background: '#1e293b', color: '#38bdf8', border: '1px solid #334155', borderRadius: '8px', padding: '0.55rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ImageIcon size={18} />
+                </button>
+
+                {/* Video Upload Button */}
+                <button 
+                  type="button" 
+                  title="Send Video Clip"
+                  onClick={() => videoInputRef.current?.click()}
+                  style={{ background: '#1e293b', color: '#a855f7', border: '1px solid #334155', borderRadius: '8px', padding: '0.55rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Film size={18} />
+                </button>
+
+                {/* Audio Upload Button */}
+                <button 
+                  type="button" 
+                  title="Send Audio / Voice Clip"
+                  onClick={() => audioInputRef.current?.click()}
+                  style={{ background: '#1e293b', color: '#10b981', border: '1px solid #334155', borderRadius: '8px', padding: '0.55rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Music size={18} />
+                </button>
+
+                {/* Document / File Upload Button */}
+                <button 
+                  type="button" 
+                  title="Send Document or Medical File"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{ background: '#1e293b', color: '#f59e0b', border: '1px solid #334155', borderRadius: '8px', padding: '0.55rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Paperclip size={18} />
+                </button>
+
+                {/* Emoji / Emote Picker Toggle */}
+                <button 
+                  type="button" 
+                  title="Insert Emotes"
+                  onClick={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
+                  style={{ background: isEmojiPickerOpen ? '#0284c7' : '#1e293b', color: '#fff', border: '1px solid #334155', borderRadius: '8px', padding: '0.55rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Smile size={18} />
+                </button>
+
+                {/* Text Input */}
+                <input 
+                  type="text"
+                  placeholder="Type message, prescription notes, symptoms..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  style={{ flex: 1, padding: '0.7rem 1rem', background: '#020617', border: '1px solid #334155', borderRadius: '8px', color: '#fff', outline: 'none', fontSize: '0.85rem' }}
+                />
+
+                {/* Send Button */}
+                <button 
+                  type="submit"
+                  disabled={isUploading || (!chatInput.trim() && !selectedAttachment)}
+                  style={{ 
+                    background: (chatInput.trim() || selectedAttachment) ? '#38bdf8' : '#334155', 
+                    color: '#0f172a', 
+                    border: 'none', 
+                    borderRadius: '8px', 
+                    padding: '0.7rem 1.25rem', 
+                    fontWeight: 'bold', 
+                    cursor: (chatInput.trim() || selectedAttachment) ? 'pointer' : 'default', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.4rem',
+                    transition: 'all 0.2s'
+                  }}>
+                  <Send size={16} /> Send
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div style={{ margin: 'auto', textAlign: 'center', color: '#64748b', padding: '2rem' }}>
+              <MessageSquare size={52} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+              <h3 style={{ color: '#cbd5e1', margin: '0 0 0.5rem' }}>No Conversation Selected</h3>
+              <p style={{ fontSize: '0.88rem', margin: 0 }}>Click on any patient or doctor from the contacts list to open their consultation chat.</p>
+            </div>
+          )}
         </div>
       )}
 
