@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import html2canvas from 'html2canvas';
 import { 
   Video, VideoOff, Mic, MicOff, PhoneOff, Share2, MessageSquare, 
   Calendar, Clock, User, Stethoscope, Send, CheckCircle, Plus, 
   Search, Copy, Check, FileText, Activity, Shield, Maximize2, 
   Minimize2, AlertCircle, Sparkles, X, ChevronRight, PhoneCall, Trash2,
   Users, UserCheck, HeartPulse, Radio, Image as ImageIcon, Paperclip, 
-  Smile, Film, Music, Download
+  Smile, Film, Music, Download, Flag, ZoomIn, Loader2, Camera
 } from 'lucide-react';
 import '../styles/App.css';
 
@@ -102,6 +103,25 @@ export default function TeleConsultation({ user }) {
   const videoInputRef = useRef(null);
   const audioInputRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  // Fullscreen Photo Lightbox State
+  const [lightboxImage, setLightboxImage] = useState(null);
+
+  // Live WhatsApp Voice Note Recording State
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const audioRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const audioTimerRef = useRef(null);
+
+  // Dual-Sided Incident Report with Screenshot State
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState(null);
+  const [reportContext, setReportContext] = useState('');
+  const [reportScreenshot, setReportScreenshot] = useState(null);
+  const [reportReason, setReportReason] = useState('Abusive Language / Harassment');
+  const [reportDetails, setReportDetails] = useState('');
+  const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false);
 
   // Chat scroll refs
   const messagesEndRef = useRef(null);
@@ -283,13 +303,13 @@ export default function TeleConsultation({ user }) {
     });
   };
 
-  // Handle attachment selection (image, video, audio, file)
+  // Handle attachment selection (image, video, audio, file) with chunked video support up to 25MB
   const handleFileSelect = async (e, type) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 8 * 1024 * 1024) {
-      alert("⚠️ File size exceeds 8MB. Please select a smaller file.");
+    if (file.size > 25 * 1024 * 1024) {
+      alert("⚠️ File size exceeds 25MB. Please select a smaller file.");
       return;
     }
 
@@ -303,6 +323,28 @@ export default function TeleConsultation({ user }) {
           name: file.name,
           size: (file.size / 1024).toFixed(1) + ' KB'
         });
+      } else if (type === 'video') {
+        // If video is > 400KB, mark as chunked so it's split across records to bypass Convex 1MB document limit
+        if (file.size > 400 * 1024) {
+          setSelectedAttachment({
+            type: 'video',
+            isChunked: true,
+            file,
+            name: file.name,
+            size: (file.size / (1024 * 1024)).toFixed(1) + ' MB'
+          });
+        } else {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            setSelectedAttachment({
+              type: 'video',
+              url: ev.target.result,
+              name: file.name,
+              size: (file.size / 1024).toFixed(1) + ' KB'
+            });
+          };
+          reader.readAsDataURL(file);
+        }
       } else {
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -320,6 +362,147 @@ export default function TeleConsultation({ user }) {
     } finally {
       setIsUploading(false);
       e.target.value = '';
+    }
+  };
+
+  // Live WhatsApp-Style Voice Note Recording
+  const startAudioRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      audioRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.start();
+      setIsRecordingAudio(true);
+      setRecordingDuration(0);
+      audioTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      alert("Microphone permission required for voice notes: " + err.message);
+    }
+  };
+
+  const stopAudioRecording = (shouldSend = true) => {
+    if (audioTimerRef.current) {
+      clearInterval(audioTimerRef.current);
+      audioTimerRef.current = null;
+    }
+    const recorder = audioRecorderRef.current;
+    const finalDuration = recordingDuration;
+
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.onstop = async () => {
+        if (shouldSend && audioChunksRef.current.length > 0 && activeChatPeer) {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          const reader = new FileReader();
+          reader.onload = async () => {
+            const base64Audio = reader.result;
+            const peerEmail = activeChatPeer.email || activeChatPeer.doctorEmail || activeChatPeer.patientEmail;
+            const peerName = activeChatPeer.name || activeChatPeer.doctorName || activeChatPeer.patientName;
+
+            const voiceMsg = {
+              senderName: userName,
+              senderEmail: userEmail,
+              receiverName: peerName,
+              receiverEmail: peerEmail,
+              message: '',
+              attachment: {
+                type: 'audio',
+                url: base64Audio,
+                name: `Voice Note (${formatTimer(finalDuration)})`,
+                size: 'Audio Recording'
+              },
+              timestamp: Date.now()
+            };
+
+            try {
+              await saveRecordMutation({
+                patientId: userEmail,
+                type: 'tele_chat',
+                data: voiceMsg
+              });
+              setTimeout(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+              }, 50);
+            } catch (err) {
+              alert("Error sending voice note: " + err.message);
+            }
+          };
+          reader.readAsDataURL(audioBlob);
+        }
+
+        if (recorder.stream) {
+          recorder.stream.getTracks().forEach(t => t.stop());
+        }
+        audioRecorderRef.current = null;
+        audioChunksRef.current = [];
+      };
+      recorder.stop();
+    }
+
+    setIsRecordingAudio(false);
+    setRecordingDuration(0);
+  };
+
+  // Open Incident Report Modal with Auto-Screenshot Capture
+  const handleOpenReport = async (target, context) => {
+    setIsCapturingScreenshot(true);
+    setReportTarget(target);
+    setReportContext(context);
+    try {
+      const canvas = await html2canvas(document.body, {
+        logging: false,
+        useCORS: true,
+        scale: 0.75
+      });
+      const screenshotUrl = canvas.toDataURL('image/jpeg', 0.65);
+      setReportScreenshot(screenshotUrl);
+    } catch (err) {
+      console.warn("Screenshot capture error:", err);
+      setReportScreenshot(null);
+    } finally {
+      setIsCapturingScreenshot(false);
+      setIsReportModalOpen(true);
+    }
+  };
+
+  // Submit Incident Report to Convex
+  const handleSubmitReport = async (e) => {
+    e.preventDefault();
+    if (!reportTarget) return;
+
+    try {
+      await saveRecordMutation({
+        patientId: userEmail,
+        type: 'incident_report',
+        data: {
+          reporterName: userName,
+          reporterEmail: userEmail,
+          reporterRole: isAdmin ? 'Developer Admin' : isDoctor ? 'Doctor Specialist' : 'Registered Patient',
+          targetName: reportTarget?.name || reportTarget?.doctorName || reportTarget?.patientName || 'Unknown User',
+          targetEmail: reportTarget?.email || reportTarget?.doctorEmail || reportTarget?.patientEmail || 'N/A',
+          targetRole: reportTarget?.role || (isDoctor ? 'Patient' : 'Doctor'),
+          context: reportContext,
+          reason: reportReason,
+          details: reportDetails,
+          screenshot: reportScreenshot,
+          meetingCode: activeRoomId || null,
+          timestamp: Date.now(),
+          status: 'pending'
+        }
+      });
+      setIsReportModalOpen(false);
+      setReportDetails('');
+      setReportScreenshot(null);
+      alert("✅ Incident report submitted successfully with full-screen evidence. The developer admin will review and take administrative action.");
+    } catch (err) {
+      alert("Error submitting incident report: " + err.message);
     }
   };
 
@@ -434,7 +617,7 @@ export default function TeleConsultation({ user }) {
     });
   }, [allRecords, isInCall, activeRoomId, handleIncomingSignal]);
 
-  // Initialize WebRTC Call (MEETING CODE STRICTLY MANDATORY)
+  // Initialize WebRTC Call (MEETING CODE STRICTLY MANDATORY & VERIFIED)
   const startCall = async (meetingCode, partner) => {
     const cleanCode = (meetingCode || '').trim();
     if (!cleanCode) {
@@ -442,8 +625,23 @@ export default function TeleConsultation({ user }) {
       return;
     }
 
+    // STRICT VALIDATION: Code must exist in active scheduled appointments
+    const matchingAppointment = appointments.find(
+      a => (a.meetingCode || '').trim().toUpperCase() === cleanCode.toUpperCase()
+    );
+
+    if (!matchingAppointment) {
+      alert(`⚠️ Invalid or Cancelled Meeting Code "${cleanCode}".\n\nOnly valid, active consultation codes scheduled by the doctor are permitted. If the meeting was deleted or does not exist, access is strictly denied.`);
+      return;
+    }
+
+    const matchedPartner = partner || {
+      name: isDoctor ? matchingAppointment.patientName : matchingAppointment.doctorName,
+      email: isDoctor ? matchingAppointment.patientEmail : matchingAppointment.doctorEmail
+    };
+
     setActiveRoomId(cleanCode);
-    setActiveCallPartner(partner || { name: isDoctor ? "Patient Consultation" : "Doctor Specialist" });
+    setActiveCallPartner(matchedPartner);
     setIsInCall(true);
     setHasRemoteStream(false);
     setIsPeerConnected(false);
@@ -688,7 +886,7 @@ export default function TeleConsultation({ user }) {
     }
   };
 
-  // Chat message send handler (Supports text, photo, video, audio, files & emotes)
+  // Chat message send handler (Supports text, photo, video, audio, files & emotes with chunked video support)
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if ((!chatInput.trim() && !selectedAttachment) || !activeChatPeer) return;
@@ -696,17 +894,83 @@ export default function TeleConsultation({ user }) {
     const peerEmail = activeChatPeer.email || activeChatPeer.doctorEmail || activeChatPeer.patientEmail;
     const peerName = activeChatPeer.name || activeChatPeer.doctorName || activeChatPeer.patientName;
 
-    const newMsg = {
-      senderName: userName,
-      senderEmail: userEmail,
-      receiverName: peerName,
-      receiverEmail: peerEmail,
-      message: chatInput.trim(),
-      attachment: selectedAttachment ? { ...selectedAttachment } : null,
-      timestamp: Date.now()
-    };
-
+    setIsUploading(true);
     try {
+      // Chunked Video Upload for videos larger than 400KB to bypass Convex 1MB document limit
+      if (selectedAttachment?.isChunked && selectedAttachment.file) {
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          try {
+            const base64Data = ev.target.result;
+            const fileId = 'vid_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
+            const chunkSize = 250000;
+            const totalChunks = Math.ceil(base64Data.length / chunkSize);
+
+            for (let i = 0; i < totalChunks; i++) {
+              const chunkStr = base64Data.substring(i * chunkSize, (i + 1) * chunkSize);
+              await saveRecordMutation({
+                patientId: userEmail,
+                type: 'media_chunk',
+                data: {
+                  fileId,
+                  chunkIndex: i,
+                  totalChunks,
+                  chunk: chunkStr
+                }
+              });
+            }
+
+            const newMsg = {
+              senderName: userName,
+              senderEmail: userEmail,
+              receiverName: peerName,
+              receiverEmail: peerEmail,
+              message: chatInput.trim(),
+              attachment: {
+                type: 'video',
+                isChunked: true,
+                fileId,
+                totalChunks,
+                name: selectedAttachment.name,
+                size: selectedAttachment.size
+              },
+              timestamp: Date.now()
+            };
+
+            await saveRecordMutation({
+              patientId: userEmail,
+              type: 'tele_chat',
+              data: newMsg
+            });
+
+            setChatInput('');
+            setSelectedAttachment(null);
+            setIsEmojiPickerOpen(false);
+            setIsUploading(false);
+            setTimeout(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, 50);
+          } catch (chunkErr) {
+            console.error(chunkErr);
+            alert("Error uploading video chunks: " + chunkErr.message);
+            setIsUploading(false);
+          }
+        };
+        reader.readAsDataURL(selectedAttachment.file);
+        return;
+      }
+
+      // Normal text or direct photo / audio / document attachment
+      const newMsg = {
+        senderName: userName,
+        senderEmail: userEmail,
+        receiverName: peerName,
+        receiverEmail: peerEmail,
+        message: chatInput.trim(),
+        attachment: selectedAttachment ? { ...selectedAttachment } : null,
+        timestamp: Date.now()
+      };
+
       await saveRecordMutation({
         patientId: userEmail,
         type: 'tele_chat',
@@ -723,6 +987,8 @@ export default function TeleConsultation({ user }) {
     } catch (err) {
       console.error(err);
       alert("Error sending message: " + err.message);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -762,6 +1028,169 @@ export default function TeleConsultation({ user }) {
     return `${mins.toString().padStart(2, '0')}:${remSecs.toString().padStart(2, '0')}`;
   };
 
+  // Helper component for chunked video reconstruction in chat
+  const ChunkedVideoViewer = ({ attachment }) => {
+    const matchingChunks = allRecords.filter(r => r.type === 'media_chunk' && r.data?.fileId === attachment.fileId);
+    const totalChunks = attachment.totalChunks || 1;
+    const isComplete = matchingChunks.length >= totalChunks;
+
+    if (!isComplete) {
+      return (
+        <div style={{ padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.4)', borderRadius: '8px', border: '1px solid #334155', color: '#94a3b8', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Loader2 size={16} className="animate-spin" color="#38bdf8" />
+          <span>Assembling video clip ({matchingChunks.length}/{totalChunks} chunks)...</span>
+        </div>
+      );
+    }
+
+    const assembledBase64 = matchingChunks
+      .sort((a, b) => (a.data?.chunkIndex || 0) - (b.data?.chunkIndex || 0))
+      .map(r => r.data?.chunk || '')
+      .join('');
+
+    return (
+      <video 
+        src={assembledBase64} 
+        controls 
+        playsInline 
+        style={{ maxWidth: '100%', maxHeight: '240px', borderRadius: '8px', display: 'block', background: '#000' }}
+      />
+    );
+  };
+
+  // Render Full-Screen Lightbox Modal
+  const renderLightboxModal = () => {
+    if (!lightboxImage) return null;
+    return (
+      <div 
+        onClick={() => setLightboxImage(null)}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.94)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 999999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1.5rem'
+        }}>
+        <div style={{ position: 'absolute', top: '1.25rem', right: '1.5rem', display: 'flex', gap: '1rem', zIndex: 1000000 }}>
+          <a 
+            href={lightboxImage} 
+            download={`sanjeevani_clinical_photo_${Date.now()}.jpg`}
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#0284c7', color: '#fff', padding: '0.5rem 1rem', borderRadius: '6px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 'bold' }}>
+            <Download size={16} /> Download High-Res
+          </a>
+          <button 
+            onClick={() => setLightboxImage(null)}
+            style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <div style={{ maxWidth: '92vw', maxHeight: '88vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
+          <img 
+            src={lightboxImage} 
+            alt="Fullscreen Photo Preview" 
+            style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: '8px', border: '2px solid rgba(56, 189, 248, 0.6)', boxShadow: '0 0 45px rgba(0,0,0,0.9)' }} 
+          />
+        </div>
+      </div>
+    );
+  };
+
+  // Render Incident Report Modal
+  const renderReportModal = () => {
+    if (!isReportModalOpen) return null;
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999, padding: '1rem' }}>
+        <div style={{ background: '#0f172a', border: '1px solid #ef4444', borderRadius: '16px', width: '100%', maxWidth: '560px', padding: '1.75rem', color: '#fff', position: 'relative', boxShadow: '0 20px 50px rgba(239,68,68,0.25)', maxHeight: '90vh', overflowY: 'auto' }}>
+          
+          <button 
+            onClick={() => { setIsReportModalOpen(false); setReportScreenshot(null); }}
+            style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+            <X size={22} />
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <Flag size={22} color="#ef4444" />
+            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 'bold', color: '#f8fafc' }}>
+              Report Incident to Developer Admin
+            </h3>
+          </div>
+          <p style={{ margin: '0 0 1.25rem', color: '#94a3b8', fontSize: '0.85rem' }}>
+            Your report will be delivered directly to Developer Admin (Satyam Tyagi) with instant full-screen evidence for review, disciplinary warning, or account ban.
+          </p>
+
+          {/* Reported target summary */}
+          <div style={{ background: '#1e293b', padding: '0.85rem 1rem', borderRadius: '8px', marginBottom: '1rem', border: '1px solid #334155' }}>
+            <div style={{ fontSize: '0.75rem', color: '#fca5a5', fontWeight: 'bold', textTransform: 'uppercase' }}>Reported User</div>
+            <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '0.95rem', marginTop: '2px' }}>{reportTarget?.name || reportTarget?.doctorName || reportTarget?.patientName || 'User'}</div>
+            <div style={{ color: '#94a3b8', fontSize: '0.8rem' }}>{reportTarget?.email || reportTarget?.doctorEmail || reportTarget?.patientEmail || 'Active Participant'} • Context: {reportContext}</div>
+          </div>
+
+          <form onSubmit={handleSubmitReport} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div>
+              <label style={{ fontSize: '0.8rem', color: '#cbd5e1', display: 'block', marginBottom: '0.35rem', fontWeight: 'bold' }}>Violation Reason</label>
+              <select 
+                value={reportReason} 
+                onChange={e => setReportReason(e.target.value)}
+                style={{ width: '100%', padding: '0.65rem', background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: '#fff', fontSize: '0.85rem' }}>
+                <option>Abusive Language / Harassment</option>
+                <option>Inappropriate Visual Conduct / Indecency</option>
+                <option>Fraudulent or Impersonated Specialist</option>
+                <option>Medical Malpractice / Negligence</option>
+                <option>Spam, Phishing or Unwanted Solicitation</option>
+                <option>Privacy or Confidentiality Breach</option>
+                <option>Other Serious Misconduct</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.8rem', color: '#cbd5e1', display: 'block', marginBottom: '0.35rem', fontWeight: 'bold' }}>Detailed Description / Incident Notes</label>
+              <textarea 
+                placeholder="Explain what occurred during this call or chat..."
+                value={reportDetails}
+                onChange={e => setReportDetails(e.target.value)}
+                required
+                style={{ width: '100%', height: '80px', padding: '0.65rem', background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: '#fff', resize: 'none', fontSize: '0.85rem' }}
+              />
+            </div>
+
+            {/* Captured Screenshot Preview */}
+            {reportScreenshot && (
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 'bold', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Camera size={14} /> Full-Screen Screenshot Evidence (Captured automatically):
+                </div>
+                <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid #38bdf8', maxHeight: '140px' }}>
+                  <img src={reportScreenshot} alt="Evidence" style={{ width: '100%', height: '140px', objectFit: 'cover', display: 'block' }} />
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => { setIsReportModalOpen(false); setReportScreenshot(null); }}
+                style={{ flex: 1, padding: '0.75rem', background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                Cancel
+              </button>
+              <button
+                type="submit"
+                style={{ flex: 2, padding: '0.75rem', background: 'linear-gradient(135deg, #ef4444, #dc2626)', border: 'none', color: '#fff', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', boxShadow: '0 4px 15px rgba(239,68,68,0.4)' }}>
+                <Flag size={16} /> Submit Incident Report
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   // =========================================================================
   // IF IN ACTIVE VIDEO CALL -> RENDER FULL REAL WEBRTC VIDEO CONSULTATION ROOM
   // =========================================================================
@@ -790,7 +1219,28 @@ export default function TeleConsultation({ user }) {
             Consultation with: <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>{activeCallPartner?.name || "Patient / Doctor"}</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              onClick={() => handleOpenReport(activeCallPartner, 'Live WebRTC Video Consultation')}
+              disabled={isCapturingScreenshot}
+              style={{
+                background: 'rgba(239, 68, 68, 0.2)',
+                border: '1px solid #ef4444',
+                color: '#fca5a5',
+                borderRadius: '6px',
+                padding: '0.35rem 0.75rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                fontSize: '0.8rem',
+                fontWeight: 'bold',
+                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)'
+              }}>
+              <Flag size={14} color="#f87171" />
+              {isCapturingScreenshot ? 'Capturing Proof...' : 'Report Incident'}
+            </button>
+
             <div style={{ 
               fontSize: '0.8rem', 
               color: isPeerConnected ? '#34d399' : '#f59e0b', 
@@ -1022,6 +1472,10 @@ export default function TeleConsultation({ user }) {
             <PhoneOff size={18} /> End Call
           </button>
         </div>
+
+        {/* Modals inside Call Room */}
+        {renderReportModal()}
+        {renderLightboxModal()}
       </div>
     );
   }
@@ -1763,6 +2217,29 @@ export default function TeleConsultation({ user }) {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {/* Report Incident to Admin Button */}
+                  <button
+                    onClick={() => handleOpenReport(activeChatPeer, 'Chat Consultation Dialogue')}
+                    disabled={isCapturingScreenshot}
+                    title="Report this user to Developer Admin with full screenshot evidence"
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      border: '1px solid #ef4444',
+                      color: '#f87171',
+                      borderRadius: '8px',
+                      padding: '0.45rem 0.75rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      fontSize: '0.8rem',
+                      fontWeight: 'bold',
+                      boxShadow: '0 2px 6px rgba(239, 68, 68, 0.2)'
+                    }}>
+                    <Flag size={14} color="#f87171" />
+                    {isCapturingScreenshot ? 'Capturing...' : 'Report'}
+                  </button>
+
                   {/* ONLY DOCTOR SEES "FIX MEETING" */}
                   {isDoctor && (
                     <button
@@ -1793,9 +2270,9 @@ export default function TeleConsultation({ user }) {
                     onClick={() => setActiveChatPeer(null)}
                     title="Close Chat (View Contacts)"
                     style={{
-                      background: 'rgba(239, 68, 68, 0.15)',
-                      border: '1px solid #ef4444',
-                      color: '#f87171',
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid #334155',
+                      color: '#cbd5e1',
                       borderRadius: '8px',
                       padding: '0.45rem 0.65rem',
                       cursor: 'pointer',
@@ -1865,32 +2342,54 @@ export default function TeleConsultation({ user }) {
                         {/* Attached Multimedia (Photo, Video, Audio, Document) */}
                         {msg.attachment && (
                           <div style={{ marginTop: msg.message ? '0.65rem' : '0' }}>
-                            {/* Image Attachment */}
+                            {/* Image Attachment (Tapping opens High-Res Fullscreen Lightbox) */}
                             {msg.attachment.type === 'image' && (
-                              <img 
-                                src={msg.attachment.url} 
-                                alt={msg.attachment.name || "Photo attachment"}
-                                style={{ maxWidth: '100%', maxHeight: '220px', borderRadius: '8px', display: 'block', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.2)' }}
-                                onClick={() => window.open(msg.attachment.url)}
-                                title="Click to view full image"
-                              />
+                              <div 
+                                onClick={() => setLightboxImage(msg.attachment.url)}
+                                style={{ position: 'relative', cursor: 'pointer', display: 'inline-block' }}
+                                title="Click to open full-screen high-res preview">
+                                <img 
+                                  src={msg.attachment.url} 
+                                  alt={msg.attachment.name || "Photo attachment"}
+                                  style={{ maxWidth: '100%', maxHeight: '240px', borderRadius: '8px', display: 'block', border: '1px solid rgba(255,255,255,0.2)' }}
+                                />
+                                <div style={{
+                                  position: 'absolute',
+                                  bottom: '6px',
+                                  right: '6px',
+                                  background: 'rgba(0,0,0,0.7)',
+                                  color: '#fff',
+                                  borderRadius: '4px',
+                                  padding: '2px 6px',
+                                  fontSize: '0.7rem',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '3px'
+                                }}>
+                                  <ZoomIn size={12} /> Fullscreen
+                                </div>
+                              </div>
                             )}
 
-                            {/* Video Attachment */}
+                            {/* Video Attachment (Direct or Reconstructed Chunks) */}
                             {msg.attachment.type === 'video' && (
-                              <video 
-                                src={msg.attachment.url} 
-                                controls 
-                                playsInline 
-                                style={{ maxWidth: '100%', maxHeight: '220px', borderRadius: '8px', display: 'block', background: '#000' }}
-                              />
+                              msg.attachment.isChunked ? (
+                                <ChunkedVideoViewer attachment={msg.attachment} />
+                              ) : (
+                                <video 
+                                  src={msg.attachment.url} 
+                                  controls 
+                                  playsInline 
+                                  style={{ maxWidth: '100%', maxHeight: '240px', borderRadius: '8px', display: 'block', background: '#000' }}
+                                />
+                              )
                             )}
 
-                            {/* Audio Voice Note Attachment */}
+                            {/* WhatsApp Voice Note Audio Attachment */}
                             {msg.attachment.type === 'audio' && (
-                              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.5rem', borderRadius: '8px' }}>
-                                <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <Music size={12} /> {msg.attachment.name || "Audio Recording"}
+                              <div style={{ background: 'rgba(0,0,0,0.35)', padding: '0.65rem 0.85rem', borderRadius: '10px', minWidth: '250px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                <div style={{ fontSize: '0.72rem', color: '#7dd3fc', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold' }}>
+                                  <Mic size={13} color="#38bdf8" /> {msg.attachment.name || "Voice Note"}
                                 </div>
                                 <audio src={msg.attachment.url} controls style={{ width: '100%', height: '36px' }} />
                               </div>
@@ -1968,83 +2467,112 @@ export default function TeleConsultation({ user }) {
                 </div>
               )}
 
-              {/* Message Input Box with Multimedia Attachments & Emotes */}
-              <form onSubmit={handleSendMessage} style={{ padding: '0.85rem 1rem', borderTop: '1px solid #1e293b', background: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                
-                {/* Photo Upload Button */}
-                <button 
-                  type="button" 
-                  title="Send Photo"
-                  onClick={() => imageInputRef.current?.click()}
-                  style={{ background: '#1e293b', color: '#38bdf8', border: '1px solid #334155', borderRadius: '8px', padding: '0.55rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <ImageIcon size={18} />
-                </button>
+              {/* WhatsApp Live Voice Note Recording Bar OR Normal Input Form */}
+              {isRecordingAudio ? (
+                <div style={{ padding: '0.85rem 1.25rem', borderTop: '1px solid #ef4444', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444', animation: 'pulse 1s infinite' }}></span>
+                    <span style={{ color: '#f87171', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                      Recording Voice Note: {formatTimer(recordingDuration)}
+                    </span>
+                    <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>(Speak into microphone)</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <button 
+                      type="button" 
+                      onClick={() => stopAudioRecording(false)}
+                      title="Discard Recording"
+                      style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', color: '#f87171', borderRadius: '8px', padding: '0.5rem 0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                      <Trash2 size={16} /> Discard
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => stopAudioRecording(true)}
+                      title="Send Voice Note"
+                      style={{ background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.5rem 1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', fontWeight: 'bold', boxShadow: '0 2px 10px rgba(16, 185, 129, 0.4)' }}>
+                      <Send size={16} /> Send Voice Note
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleSendMessage} style={{ padding: '0.85rem 1rem', borderTop: '1px solid #1e293b', background: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                  
+                  {/* Photo Upload Button */}
+                  <button 
+                    type="button" 
+                    title="Send Photo"
+                    onClick={() => imageInputRef.current?.click()}
+                    style={{ background: '#1e293b', color: '#38bdf8', border: '1px solid #334155', borderRadius: '8px', padding: '0.55rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ImageIcon size={18} />
+                  </button>
 
-                {/* Video Upload Button */}
-                <button 
-                  type="button" 
-                  title="Send Video Clip"
-                  onClick={() => videoInputRef.current?.click()}
-                  style={{ background: '#1e293b', color: '#a855f7', border: '1px solid #334155', borderRadius: '8px', padding: '0.55rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Film size={18} />
-                </button>
+                  {/* Video Upload Button */}
+                  <button 
+                    type="button" 
+                    title="Send Video Clip (Supports up to 25MB)"
+                    onClick={() => videoInputRef.current?.click()}
+                    style={{ background: '#1e293b', color: '#a855f7', border: '1px solid #334155', borderRadius: '8px', padding: '0.55rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Film size={18} />
+                  </button>
 
-                {/* Audio Upload Button */}
-                <button 
-                  type="button" 
-                  title="Send Audio / Voice Clip"
-                  onClick={() => audioInputRef.current?.click()}
-                  style={{ background: '#1e293b', color: '#10b981', border: '1px solid #334155', borderRadius: '8px', padding: '0.55rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Music size={18} />
-                </button>
+                  {/* WhatsApp Voice Note Record Button */}
+                  <button 
+                    type="button" 
+                    title="Record Live Voice Note (WhatsApp style)"
+                    onClick={startAudioRecording}
+                    style={{ background: '#1e293b', color: '#34d399', border: '1px solid #334155', borderRadius: '8px', padding: '0.55rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+                    <Mic size={18} />
+                  </button>
 
-                {/* Document / File Upload Button */}
-                <button 
-                  type="button" 
-                  title="Send Document or Medical File"
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{ background: '#1e293b', color: '#f59e0b', border: '1px solid #334155', borderRadius: '8px', padding: '0.55rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Paperclip size={18} />
-                </button>
+                  {/* Document / File Upload Button */}
+                  <button 
+                    type="button" 
+                    title="Send Document or Medical File"
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{ background: '#1e293b', color: '#f59e0b', border: '1px solid #334155', borderRadius: '8px', padding: '0.55rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Paperclip size={18} />
+                  </button>
 
-                {/* Emoji / Emote Picker Toggle */}
-                <button 
-                  type="button" 
-                  title="Insert Emotes"
-                  onClick={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
-                  style={{ background: isEmojiPickerOpen ? '#0284c7' : '#1e293b', color: '#fff', border: '1px solid #334155', borderRadius: '8px', padding: '0.55rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Smile size={18} />
-                </button>
+                  {/* Emoji / Emote Picker Toggle */}
+                  <button 
+                    type="button" 
+                    title="Insert Emotes"
+                    onClick={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
+                    style={{ background: isEmojiPickerOpen ? '#0284c7' : '#1e293b', color: '#fff', border: '1px solid #334155', borderRadius: '8px', padding: '0.55rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Smile size={18} />
+                  </button>
 
-                {/* Text Input */}
-                <input 
-                  type="text"
-                  placeholder="Type message, prescription notes, symptoms..."
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  style={{ flex: 1, padding: '0.7rem 1rem', background: '#020617', border: '1px solid #334155', borderRadius: '8px', color: '#fff', outline: 'none', fontSize: '0.85rem' }}
-                />
+                  {/* Text Input */}
+                  <input 
+                    type="text"
+                    placeholder="Type message, prescription notes, symptoms..."
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    style={{ flex: 1, padding: '0.7rem 1rem', background: '#020617', border: '1px solid #334155', borderRadius: '8px', color: '#fff', outline: 'none', fontSize: '0.85rem' }}
+                  />
 
-                {/* Send Button */}
-                <button 
-                  type="submit"
-                  disabled={isUploading || (!chatInput.trim() && !selectedAttachment)}
-                  style={{ 
-                    background: (chatInput.trim() || selectedAttachment) ? '#38bdf8' : '#334155', 
-                    color: '#0f172a', 
-                    border: 'none', 
-                    borderRadius: '8px', 
-                    padding: '0.7rem 1.25rem', 
-                    fontWeight: 'bold', 
-                    cursor: (chatInput.trim() || selectedAttachment) ? 'pointer' : 'default', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '0.4rem',
-                    transition: 'all 0.2s'
-                  }}>
-                  <Send size={16} /> Send
-                </button>
-              </form>
+                  {/* Send Button */}
+                  <button 
+                    type="submit"
+                    disabled={isUploading || (!chatInput.trim() && !selectedAttachment)}
+                    style={{ 
+                      background: (chatInput.trim() || selectedAttachment) ? '#38bdf8' : '#334155', 
+                      color: '#0f172a', 
+                      border: 'none', 
+                      borderRadius: '8px', 
+                      padding: '0.7rem 1.25rem', 
+                      fontWeight: 'bold', 
+                      cursor: (chatInput.trim() || selectedAttachment) ? 'pointer' : 'default', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '0.4rem',
+                      transition: 'all 0.2s'
+                    }}>
+                    {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                    <span>{isUploading ? 'Sending...' : 'Send'}</span>
+                  </button>
+                </form>
+              )}
             </div>
           ) : (
             <div style={{ margin: 'auto', textAlign: 'center', color: '#64748b', padding: '2rem' }}>
@@ -2160,6 +2688,10 @@ export default function TeleConsultation({ user }) {
           </div>
         </div>
       )}
+
+      {/* Incident Report & Lightbox Modals */}
+      {renderReportModal()}
+      {renderLightboxModal()}
 
     </div>
   );

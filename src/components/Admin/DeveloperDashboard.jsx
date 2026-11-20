@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { useCustomAuth } from '../../context/AuthContext';
-import { ShieldCheck, UserX, Key, Trash2, Search, LogOut, Check, X, Bell } from 'lucide-react';
+import { ShieldCheck, UserX, Key, Trash2, Search, LogOut, Check, X, Bell, ShieldAlert, Camera, AlertTriangle, Eye } from 'lucide-react';
 
 export default function DeveloperDashboard() {
   const { token, user, logout } = useCustomAuth();
@@ -24,10 +24,16 @@ export default function DeveloperDashboard() {
   const [newPasswords, setNewPasswords] = useState({});
   const [replyText, setReplyText] = useState({});
   const [actionLoading, setActionLoading] = useState(null);
+  const [previewScreenshot, setPreviewScreenshot] = useState(null);
 
   if (!user || user.role !== 'developer') {
     return <div style={{ padding: '2rem', color: '#f87171' }}>Access Denied. Developer only.</div>;
   }
+
+  // Incident Reports
+  const incidentReports = records
+    .filter(r => r.type === 'incident_report')
+    .sort((a, b) => (b.data?.timestamp || 0) - (a.data?.timestamp || 0));
 
   // Approved and Rejected Sets
   const approvalsMap = new Map();
@@ -52,13 +58,37 @@ export default function DeveloperDashboard() {
   const pendingRequests = Array.from(pendingMap.values());
 
   const handleBan = async (targetUserId) => {
-    try { await banMutation({ adminToken: token, targetUserId }); } 
+    try { await banMutation({ adminToken: token, targetUserId }); alert("User status toggled!"); } 
     catch(e) { alert(e.message); }
   };
 
+  // CASCADING DELETE: Deletes user account AND wipes all of their chats, appointments, and records
   const handleDelete = async (targetUserId) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
-      try { await deleteMutation({ adminToken: token, targetUserId }); } 
+    const target = users.find(u => u._id === targetUserId);
+    const targetEmail = target?.email?.toLowerCase();
+
+    if (window.confirm(`Are you sure you want to permanently delete user ${target?.name || targetEmail}? All of their chats, appointments, patient records, and profiles will be completely wiped from the database.`)) {
+      try { 
+        // 1. Delete user account from Convex auth
+        await deleteMutation({ adminToken: token, targetUserId });
+
+        // 2. Cascade delete all records belonging to this user
+        if (targetEmail) {
+          const userRecords = records.filter(r => 
+            r.patientId?.toLowerCase() === targetEmail ||
+            r.data?.email?.toLowerCase() === targetEmail ||
+            r.data?.senderEmail?.toLowerCase() === targetEmail ||
+            r.data?.receiverEmail?.toLowerCase() === targetEmail ||
+            r.data?.doctorEmail?.toLowerCase() === targetEmail ||
+            r.data?.patientEmail?.toLowerCase() === targetEmail ||
+            r.data?.targetEmail?.toLowerCase() === targetEmail
+          );
+          for (const rec of userRecords) {
+            await deleteRecordMutation({ recordId: rec._id }).catch(console.warn);
+          }
+        }
+        alert("User and all associated chats/records have been completely deleted!");
+      } 
       catch(e) { console.error(e); alert(e.message); }
     }
   };
@@ -177,6 +207,36 @@ export default function DeveloperDashboard() {
           onClick={() => setActiveTab("users")}
           style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', background: activeTab === "users" ? '#3b82f6' : '#1e293b', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
           All Users ({users.length})
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("reports")}
+          style={{ 
+            padding: '0.75rem 1.5rem', 
+            borderRadius: '8px', 
+            background: activeTab === "reports" ? '#ef4444' : '#1e293b', 
+            color: '#fff', 
+            border: activeTab === "reports" ? '1px solid #f87171' : '1px solid #334155', 
+            cursor: 'pointer', 
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+          <ShieldAlert size={18} color={incidentReports.length > 0 ? '#fca5a5' : '#94a3b8'} />
+          <span>Incident Reports</span>
+          {incidentReports.length > 0 && (
+            <span style={{
+              background: '#dc2626',
+              color: '#fff',
+              fontSize: '0.75rem',
+              padding: '0.15rem 0.5rem',
+              borderRadius: '999px',
+              fontWeight: 'bold'
+            }}>
+              {incidentReports.length} NEW
+            </span>
+          )}
         </button>
 
         <button 
@@ -494,6 +554,227 @@ export default function DeveloperDashboard() {
         </>
       )}
 
+      {/* Incident Reports Tab */}
+      {activeTab === "reports" && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ marginBottom: '0.5rem' }}>
+            <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.5rem', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <ShieldAlert size={22} color="#ef4444" /> User Incident Reports & Tele-Consultancy Violations
+            </h2>
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: 0 }}>
+              Live violation reports filed by Doctors or Patients during Chat dialogues or Live WebRTC Video Consultations, with automated full-screen screenshot evidence.
+            </p>
+          </div>
+
+          {incidentReports.length === 0 ? (
+            <div style={{
+              background: '#1e293b',
+              borderRadius: '12px',
+              padding: '3rem',
+              textAlign: 'center',
+              border: '1px solid #334155'
+            }}>
+              <ShieldCheck size={48} color="#10b981" style={{ margin: '0 auto 1rem' }} />
+              <h3 style={{ margin: '0 0 0.5rem', color: '#f1f5f9' }}>No Incident Reports</h3>
+              <p style={{ color: '#94a3b8', margin: 0 }}>All doctor-patient chats and live video calls are operating cleanly without violations.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {incidentReports.map((report) => {
+                const repData = report.data || {};
+                const targetEmailLower = repData.targetEmail?.toLowerCase();
+                const targetUser = users.find(u => u.email?.toLowerCase() === targetEmailLower);
+
+                return (
+                  <div key={report._id} style={{
+                    background: '#1e293b',
+                    borderRadius: '12px',
+                    padding: '1.5rem',
+                    border: '1px solid #ef4444',
+                    boxShadow: '0 4px 20px rgba(239, 68, 68, 0.15)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{
+                            background: '#ef4444',
+                            color: '#fff',
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold',
+                            padding: '0.2rem 0.6rem',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            <AlertTriangle size={13} /> VIOLATION REPORT
+                          </span>
+                          <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
+                            {new Date(repData.timestamp || report.savedAt || Date.now()).toLocaleString()}
+                          </span>
+                        </div>
+                        <h3 style={{ margin: '0.5rem 0 0.25rem', color: '#fff', fontSize: '1.15rem' }}>
+                          Reason: <span style={{ color: '#fca5a5' }}>{repData.reason || 'Misconduct / Policy Violation'}</span>
+                        </h3>
+                        <div style={{ color: '#38bdf8', fontSize: '0.85rem', fontWeight: '600' }}>
+                          Context: {repData.context || 'Tele-Consultation'} {repData.meetingCode ? `• Meeting Code: ${repData.meetingCode}` : ''}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={async () => {
+                          if (window.confirm("Dismiss and remove this incident report?")) {
+                            await deleteRecordMutation({ recordId: report._id });
+                          }
+                        }}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          color: '#94a3b8',
+                          border: '1px solid #334155',
+                          borderRadius: '6px',
+                          padding: '0.4rem 0.85rem',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem'
+                        }}>
+                        <X size={14} /> Dismiss Report
+                      </button>
+                    </div>
+
+                    {/* Reporter vs Target Info Cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+                      {/* Reporter Info */}
+                      <div style={{ background: '#0f172a', padding: '1rem', borderRadius: '8px', border: '1px solid #334155' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#34d399', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                          Reported By (Filer)
+                        </div>
+                        <div style={{ fontWeight: 'bold', color: '#f8fafc', fontSize: '0.95rem' }}>{repData.reporterName || 'Anonymous'}</div>
+                        <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{repData.reporterEmail || 'N/A'}</div>
+                        <div style={{ color: '#64748b', fontSize: '0.78rem', marginTop: '0.25rem' }}>Role: {repData.reporterRole || 'User'}</div>
+                      </div>
+
+                      {/* Reported User / Target Info */}
+                      <div style={{ background: '#0f172a', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#f87171', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                          Reported User (Target)
+                        </div>
+                        <div style={{ fontWeight: 'bold', color: '#f8fafc', fontSize: '0.95rem' }}>{repData.targetName || 'Unknown User'}</div>
+                        <div style={{ color: '#fca5a5', fontSize: '0.85rem' }}>{repData.targetEmail || 'N/A'}</div>
+                        <div style={{ color: '#64748b', fontSize: '0.78rem', marginTop: '0.25rem' }}>
+                          Role: {repData.targetRole || 'User'} • Status: {targetUser?.isBanned ? '🚫 Banned' : 'Active'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Incident Details / Message */}
+                    {repData.details && (
+                      <div style={{ background: '#0f172a', padding: '0.85rem 1rem', borderRadius: '8px', borderLeft: '3px solid #ef4444' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'bold', marginBottom: '0.25rem' }}>Incident Details & Explanation:</div>
+                        <div style={{ color: '#cbd5e1', fontSize: '0.88rem', lineHeight: '1.5' }}>{repData.details}</div>
+                      </div>
+                    )}
+
+                    {/* Captured Screenshot Proof */}
+                    {repData.screenshot && (
+                      <div>
+                        <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <Camera size={15} color="#38bdf8" /> Full-Screen Screenshot Evidence (Captured at moment of report):
+                        </div>
+                        <div 
+                          onClick={() => setPreviewScreenshot(repData.screenshot)}
+                          style={{
+                            display: 'inline-block',
+                            position: 'relative',
+                            cursor: 'pointer',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            border: '2px solid #38bdf8',
+                            maxWidth: '360px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                          }}>
+                          <img 
+                            src={repData.screenshot} 
+                            alt="Incident Screenshot" 
+                            style={{ width: '100%', height: '180px', objectFit: 'cover', display: 'block' }}
+                          />
+                          <div style={{
+                            position: 'absolute',
+                            inset: 0,
+                            background: 'rgba(0,0,0,0.4)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.4rem',
+                            color: '#fff',
+                            fontWeight: 'bold',
+                            fontSize: '0.85rem',
+                            opacity: 0.95
+                          }}>
+                            <Eye size={18} /> Click to View Fullscreen
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Admin Actions Bar */}
+                    <div style={{ display: 'flex', gap: '0.75rem', borderTop: '1px solid #334155', paddingTop: '1rem', flexWrap: 'wrap' }}>
+                      {targetUser ? (
+                        <>
+                          <button
+                            onClick={() => handleBan(targetUser._id)}
+                            style={{
+                              background: targetUser.isBanned ? '#10b981' : '#f59e0b',
+                              color: '#fff',
+                              border: 'none',
+                              padding: '0.65rem 1.25rem',
+                              borderRadius: '6px',
+                              fontWeight: 'bold',
+                              fontSize: '0.85rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.4rem'
+                            }}>
+                            <UserX size={16} /> {targetUser.isBanned ? 'Unban User' : 'Ban / Suspend Reported User'}
+                          </button>
+
+                          <button
+                            onClick={() => handleDelete(targetUser._id)}
+                            style={{
+                              background: '#ef4444',
+                              color: '#fff',
+                              border: 'none',
+                              padding: '0.65rem 1.25rem',
+                              borderRadius: '6px',
+                              fontWeight: 'bold',
+                              fontSize: '0.85rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.4rem'
+                            }}>
+                            <Trash2 size={16} /> Permanently Wipe User & All Chats
+                          </button>
+                        </>
+                      ) : (
+                        <div style={{ color: '#94a3b8', fontSize: '0.85rem', display: 'flex', alignItems: 'center' }}>
+                          Target user account already deleted or not found.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Feedbacks Tab */}
       {activeTab === "feedbacks" && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -540,6 +821,52 @@ export default function DeveloperDashboard() {
               No feedbacks found.
             </div>
           )}
+        </div>
+      )}
+
+      {/* Full-Screen Screenshot Preview Modal */}
+      {previewScreenshot && (
+        <div 
+          onClick={() => setPreviewScreenshot(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.92)',
+            backdropFilter: 'blur(8px)',
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '2rem'
+          }}>
+          <div style={{ position: 'relative', maxWidth: '95vw', maxHeight: '95vh' }} onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setPreviewScreenshot(null)}
+              style={{
+                position: 'absolute',
+                top: '-45px',
+                right: '0',
+                background: '#ef4444',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+              }}>
+              <X size={20} />
+            </button>
+            <img 
+              src={previewScreenshot} 
+              alt="Screenshot Preview" 
+              style={{ maxWidth: '100%', maxHeight: '88vh', borderRadius: '10px', border: '2px solid #38bdf8', boxShadow: '0 0 35px rgba(56, 189, 248, 0.4)' }} 
+            />
+          </div>
         </div>
       )}
     </div>
