@@ -10,10 +10,19 @@ import {
 import '../styles/App.css';
 
 export default function TeleConsultation({ user }) {
-  const isAdmin = user?.role === 'developer';
-  const isDoctor = user?.role === 'doctor';
   const userEmail = user?.email?.toLowerCase() || 'guest@sanjeevani.ai';
-  const userName = user?.name || (isAdmin ? "Admin (Satyam Tyagi)" : isDoctor ? "Dr. Consultant" : "Patient");
+  const isAdmin = user?.role === 'developer' || userEmail === 'satyamtyagiji15@gmail.com';
+
+  // Convex real-time synchronization
+  const allRecords = useQuery(api.records.getAllRecords) || [];
+  const saveRecordMutation = useMutation(api.records.saveRecord);
+  const deleteRecordMutation = useMutation(api.records.deleteRecord);
+
+  // Dynamic doctor verification check in database
+  const myDoctorProfile = allRecords.find(r => r.type === 'doctor_profile' && r.data?.email?.toLowerCase() === userEmail)?.data;
+  const isDoctor = !isAdmin && (user?.role === 'doctor' || !!myDoctorProfile);
+
+  const userName = user?.name || myDoctorProfile?.name || (isAdmin ? "Admin (Satyam Tyagi)" : isDoctor ? "Dr. Consultant" : "Patient");
 
   // State management
   const [activeTab, setActiveTab] = useState('meetings'); // 'meetings', 'room', 'chat'
@@ -36,7 +45,6 @@ export default function TeleConsultation({ user }) {
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
-  const [isHudVisible, setIsHudVisible] = useState(true);
   const [isCallChatOpen, setIsCallChatOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -50,11 +58,6 @@ export default function TeleConsultation({ user }) {
   const [activeChatPeer, setActiveChatPeer] = useState(null);
   const [chatInput, setChatInput] = useState('');
   const messagesEndRef = useRef(null);
-
-  // Convex real-time synchronization
-  const allRecords = useQuery(api.records.getAllRecords) || [];
-  const saveRecordMutation = useMutation(api.records.saveRecord);
-  const deleteRecordMutation = useMutation(api.records.deleteRecord);
 
   // Pure dynamic registered doctors from Convex database only - ZERO hardcoded dummy profiles
   const registeredDoctorsInDb = allRecords
@@ -535,8 +538,30 @@ export default function TeleConsultation({ user }) {
                       )}
                     </div>
 
-                    {/* Actions */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', borderTop: '1px solid #1e293b', paddingTop: '0.75rem' }}>
+                    {/* Actions: Chat, Book Consultation, Instant Video Call */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr 1.1fr', gap: '0.4rem', borderTop: '1px solid #1e293b', paddingTop: '0.75rem' }}>
+                      <button
+                        onClick={() => {
+                          setActiveChatPeer(doc);
+                          setActiveTab('chat');
+                        }}
+                        style={{
+                          background: '#1e293b',
+                          color: '#38bdf8',
+                          border: '1px solid #38bdf8',
+                          borderRadius: '6px',
+                          padding: '0.5rem 0.2rem',
+                          fontSize: '0.8rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.25rem'
+                        }}>
+                        <MessageSquare size={13} /> Chat
+                      </button>
+
                       <button
                         onClick={() => {
                           setSelectedDoctor(doc);
@@ -547,37 +572,37 @@ export default function TeleConsultation({ user }) {
                           color: '#fff',
                           border: 'none',
                           borderRadius: '6px',
-                          padding: '0.5rem',
-                          fontSize: '0.85rem',
+                          padding: '0.5rem 0.2rem',
+                          fontSize: '0.8rem',
                           fontWeight: '600',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          gap: '0.35rem'
+                          gap: '0.25rem'
                         }}>
-                        <Calendar size={14} /> Book Slot
+                        <Calendar size={13} /> Book Slot
                       </button>
 
                       <button
                         onClick={() => {
-                          handleStartCall(`ROOM-${doc.id || 'DOC'}`, doc);
+                          handleStartCall(`ROOM-${doc.id || doc.recordId || 'DOC'}`, doc);
                         }}
                         style={{
                           background: 'linear-gradient(135deg, #059669, #047857)',
                           color: '#fff',
                           border: 'none',
                           borderRadius: '6px',
-                          padding: '0.5rem',
-                          fontSize: '0.85rem',
+                          padding: '0.5rem 0.2rem',
+                          fontSize: '0.8rem',
                           fontWeight: '600',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          gap: '0.35rem'
+                          gap: '0.25rem'
                         }}>
-                        <Video size={14} /> Instant Call
+                        <Video size={13} /> Video Call
                       </button>
                     </div>
                   </div>
@@ -628,26 +653,52 @@ export default function TeleConsultation({ user }) {
                       <div style={{ marginTop: '0.2rem', fontFamily: 'monospace', color: '#38bdf8' }}>Code: {apt.meetingCode}</div>
                     </div>
 
-                    <button
-                      onClick={() => handleStartCall(apt.meetingCode, { name: isDoctor ? apt.patientName : apt.doctorName })}
-                      style={{
-                        width: '100%',
-                        marginTop: '0.65rem',
-                        background: '#10b981',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '0.45rem',
-                        fontSize: '0.8rem',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.35rem'
-                      }}>
-                      <Video size={14} /> Join Video Room
-                    </button>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.65rem' }}>
+                      <button
+                        onClick={() => handleStartCall(apt.meetingCode, { name: isDoctor ? apt.patientName : apt.doctorName })}
+                        style={{
+                          background: '#10b981',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '0.45rem',
+                          fontSize: '0.8rem',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.35rem'
+                        }}>
+                        <Video size={14} /> Join Call
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setActiveChatPeer({
+                            name: isDoctor ? apt.patientName : apt.doctorName,
+                            email: isDoctor ? apt.patientEmail : apt.doctorEmail,
+                            specialization: isDoctor ? `Patient (${apt.reason || 'Consultation'})` : "Doctor Specialist"
+                          });
+                          setActiveTab('chat');
+                        }}
+                        style={{
+                          background: '#1e293b',
+                          color: '#38bdf8',
+                          border: '1px solid #334155',
+                          borderRadius: '6px',
+                          padding: '0.45rem',
+                          fontSize: '0.8rem',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.35rem'
+                        }}>
+                        <MessageSquare size={14} /> Chat
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -668,7 +719,7 @@ export default function TeleConsultation({ user }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#1e293b', padding: '0.35rem 0.75rem', borderRadius: '6px' }}>
                 <Shield size={16} color="#38bdf8" />
                 <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#f8fafc' }}>Room: {activeRoomId || 'SANJ-LIVE-101'}</span>
-                <button onClick={copyMeetingCode} style={{ background: 'transparent', border: 'none', color: '#38bdf8', cursor: 'pointer', padding: 0 }}>
+                <button onClick={copyMeetingCode} style={{ background: 'transparent', border: 'none', color: '#38bdf8', cursor: 'pointer', padding: 0 }} title="Copy Room ID">
                   {copiedCode ? <Check size={14} color="#4ade80" /> : <Copy size={14} />}
                 </button>
               </div>
@@ -685,11 +736,19 @@ export default function TeleConsultation({ user }) {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button 
-                onClick={() => setIsHudVisible(!isHudVisible)}
-                style={{ background: isHudVisible ? '#0284c7' : '#1e293b', color: '#fff', border: 'none', borderRadius: '6px', padding: '0.35rem 0.65rem', fontSize: '0.75rem', cursor: 'pointer', fontWeight: '600' }}>
-                Vital HUD {isHudVisible ? 'ON' : 'OFF'}
-              </button>
+              <div style={{ 
+                fontSize: '0.8rem', 
+                color: '#34d399', 
+                background: 'rgba(16, 185, 129, 0.15)', 
+                border: '1px solid rgba(16, 185, 129, 0.3)', 
+                padding: '0.35rem 0.75rem', 
+                borderRadius: '6px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.35rem' 
+              }}>
+                <Check size={14} /> Peer-to-Peer Encrypted
+              </div>
             </div>
           </div>
 
@@ -705,53 +764,18 @@ export default function TeleConsultation({ user }) {
                 style={{ width: '100%', height: '100%', objectFit: isScreenSharing ? 'contain' : 'cover' }}
               />
 
-              {/* If remote stream isn't simulated with live track, show futuristic avatar presentation */}
+              {/* If remote camera stream isn't connected yet, show clean meeting avatar placeholder */}
               {!isScreenSharing && (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at center, #1e293b 0%, #020617 100%)' }}>
                   <div style={{ width: '130px', height: '130px', borderRadius: '50%', background: 'linear-gradient(135deg, #0284c7, #38bdf8)', border: '4px solid rgba(56, 189, 248, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 35px rgba(56, 189, 248, 0.4)' }}>
-                    <Stethoscope size={64} color="#fff" />
+                    {isDoctor ? <User size={64} color="#fff" /> : <Stethoscope size={64} color="#fff" />}
                   </div>
                   <h3 style={{ marginTop: '1.25rem', color: '#f8fafc', fontSize: '1.3rem', fontWeight: '700' }}>
-                    {activeCallPartner?.name || (isDoctor ? "Connected Patient" : "Dr. Satyam Tyagi")}
+                    {activeCallPartner?.name || (isDoctor ? "Connected Patient" : "Doctor Specialist")}
                   </h3>
                   <div style={{ color: '#4ade80', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.25rem' }}>
                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4ade80' }}></span>
                     Live WebRTC Audio/Video Stream Active • 1080p@60fps
-                  </div>
-                </div>
-              )}
-
-              {/* Live Vital Sign HUD Overlay (Top-Right) */}
-              {isHudVisible && (
-                <div style={{
-                  position: 'absolute',
-                  top: '1.5rem',
-                  right: '1.5rem',
-                  background: 'rgba(15, 23, 42, 0.85)',
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(56, 189, 248, 0.3)',
-                  borderRadius: '10px',
-                  padding: '1rem',
-                  color: '#fff',
-                  width: '220px',
-                  zIndex: 20,
-                  boxShadow: '0 8px 16px rgba(0,0,0,0.5)'
-                }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#38bdf8', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Activity size={14} /> Live Optical Vitals
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem' }}>
-                    <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.4rem', borderRadius: '6px' }}>
-                      <span style={{ color: '#94a3b8' }}>Heart Rate:</span>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#4ade80' }}>76 BPM</div>
-                    </div>
-                    <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.4rem', borderRadius: '6px' }}>
-                      <span style={{ color: '#94a3b8' }}>SpO2 Level:</span>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#38bdf8' }}>98.5%</div>
-                    </div>
-                  </div>
-                  <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#cbd5e1' }}>
-                    <strong>Pain Algometry:</strong> 2.1 / 10 (Mild)
                   </div>
                 </div>
               )}
@@ -1014,23 +1038,46 @@ export default function TeleConsultation({ user }) {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => handleStartCall(`CONF-${activeChatPeer.id || 'CALL'}`, activeChatPeer)}
-                    style={{
-                      background: '#10b981',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '8px',
-                      padding: '0.5rem 1rem',
-                      fontSize: '0.85rem',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.4rem'
-                    }}>
-                    <Video size={16} /> Start Video Call
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      onClick={() => {
+                        setSelectedDoctor(activeChatPeer);
+                        setIsBookModalOpen(true);
+                      }}
+                      style={{
+                        background: '#0284c7',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '0.5rem 0.85rem',
+                        fontSize: '0.85rem',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem'
+                      }}>
+                      <Calendar size={15} /> Fix Meeting
+                    </button>
+
+                    <button
+                      onClick={() => handleStartCall(`CONF-${activeChatPeer.id || activeChatPeer.recordId || 'CALL'}`, activeChatPeer)}
+                      style={{
+                        background: '#10b981',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '0.5rem 1rem',
+                        fontSize: '0.85rem',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem'
+                      }}>
+                      <Video size={16} /> Start Video Call
+                    </button>
+                  </div>
                 </div>
 
                 {/* Messages Stream */}

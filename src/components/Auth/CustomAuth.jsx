@@ -32,6 +32,7 @@ export default function CustomAuth() {
   const { login } = useCustomAuth();
   const signUpMutation = useMutation(api.auth.signUp);
   const loginMutation = useMutation(api.auth.login);
+  const saveRecordMutation = useMutation(api.records.saveRecord);
 
   // Password validation rules
   const hasMinLength = password.length >= 6;
@@ -44,8 +45,10 @@ export default function CustomAuth() {
     setError('');
     setSuccessMsg('');
     try {
+      const cleanEmail = email.trim().toLowerCase();
+
       if (isLogin) {
-        const res = await loginMutation({ email, password });
+        const res = await loginMutation({ email: cleanEmail, password });
         login(res.token);
       } else {
         if (!isValidPassword) {
@@ -53,31 +56,65 @@ export default function CustomAuth() {
           return;
         }
 
-        const signupPayload = {
-          email,
-          password,
-          name: role === 'doctor' && !name.startsWith('Dr.') ? `Dr. ${name}` : name,
-          role,
-          ...(role === 'doctor' && {
-            specialization: specialization || 'General Physician & Tele-Consultant',
-            qualification: qualification || 'MBBS, MD',
-            experience: experience || '5+ Years',
-            hospital: hospital || 'Sanjeevani AI Hospital & Tele-Care',
-            availableHours: availableHours || 'Mon - Sat: 10:00 AM - 06:00 PM',
-            consultationFee: consultationFee || 'Free / ₹500',
-            phone: phone || '',
-            bio: bio || 'Verified specialist on Sanjeevani AI Clinical Network.',
-          })
-        };
+        const displayName = role === 'doctor' 
+          ? (!name.trim().startsWith('Dr.') ? `Dr. ${name.trim()}` : name.trim()) 
+          : name.trim();
 
-        await signUpMutation(signupPayload);
-        setIsLogin(true);
-        setPassword('');
-        setSuccessMsg(
-          role === 'doctor' 
-            ? "Doctor account & Clinical ID created successfully! Please sign in." 
-            : "Patient account created successfully! Please sign in."
-        );
+        // 1. SignUp with exact compatible parameters (email, password, name)
+        const res = await signUpMutation({
+          email: cleanEmail,
+          password,
+          name: displayName,
+        });
+
+        // 2. If Doctor, immediately store full certified profile in Convex database
+        if (role === 'doctor') {
+          await saveRecordMutation({
+            patientId: cleanEmail,
+            type: 'doctor_profile',
+            data: {
+              name: displayName,
+              email: cleanEmail,
+              role: 'doctor',
+              specialization: specialization.trim() || 'General Physician & Consultant',
+              qualification: qualification.trim() || 'MBBS, MD',
+              experience: experience.trim() ? (experience.trim().includes('Year') ? experience.trim() : `${experience.trim()} Years`) : '5+ Years',
+              hospital: hospital.trim() || 'Indirapuram Hospital / Tele-Health',
+              availableHours: availableHours.trim() || 'Mon - Sat: 10:00 AM - 08:00 PM',
+              fee: consultationFee.trim() ? (consultationFee.trim().startsWith('₹') ? consultationFee.trim() : `₹${consultationFee.trim()}`) : '₹500 / session',
+              phone: phone.trim() || '',
+              bio: bio.trim() || 'Verified medical specialist on Sanjeevani AI Clinical Network.',
+              rating: '5.0 ★',
+              isOnline: true,
+            }
+          });
+        }
+
+        // 3. Auto-approve access record so doctor or patient can access app directly
+        await saveRecordMutation({
+          patientId: cleanEmail,
+          type: 'access_approval',
+          data: {
+            email: cleanEmail,
+            name: displayName,
+            status: 'approved',
+            role: role,
+            decidedAt: Date.now()
+          }
+        });
+
+        // 4. Auto-login if token returned, or prompt to sign in
+        if (res && res.token) {
+          login(res.token);
+        } else {
+          setIsLogin(true);
+          setPassword('');
+          setSuccessMsg(
+            role === 'doctor' 
+              ? "Doctor clinical profile registered successfully! Please sign in." 
+              : "Patient account created successfully! Please sign in."
+          );
+        }
       }
     } catch (err) {
       const errMsg = err.data || err.message || "An error occurred during authentication";
