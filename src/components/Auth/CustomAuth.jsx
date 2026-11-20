@@ -60,20 +60,11 @@ export default function CustomAuth() {
           ? (!name.trim().startsWith('Dr.') ? `Dr. ${name.trim()}` : name.trim()) 
           : name.trim();
 
-        // 1. SignUp with exact compatible parameters including role & clinical profile
+        // 1. SignUp with clean arguments matching cloud Convex validator: { email, password, name }
         const res = await signUpMutation({
           email: cleanEmail,
           password,
           name: displayName,
-          role: role,
-          specialization: role === 'doctor' ? (specialization.trim() || 'General Physician & Consultant') : undefined,
-          qualification: role === 'doctor' ? (qualification.trim() || 'MBBS, MD') : undefined,
-          experience: role === 'doctor' ? (experience.trim() || '5+ Years') : undefined,
-          hospital: role === 'doctor' ? (hospital.trim() || 'Indirapuram Hospital / Tele-Health') : undefined,
-          availableHours: role === 'doctor' ? (availableHours.trim() || 'Mon - Sat: 10:00 AM - 08:00 PM') : undefined,
-          consultationFee: role === 'doctor' ? (consultationFee.trim() || '₹500 / session') : undefined,
-          bio: role === 'doctor' ? (bio.trim() || 'Verified medical specialist on Sanjeevani AI Clinical Network.') : undefined,
-          phone: phone.trim() || undefined,
         });
 
         // 2. If Doctor, immediately store full certified profile in Convex database

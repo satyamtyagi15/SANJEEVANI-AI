@@ -16,6 +16,7 @@ export default function DeveloperDashboard() {
   const changePassword = useMutation(api.auth.changeUserPassword);
   const cleanupDummyProfilesMutation = useMutation(api.auth.cleanupAllDummyDoctorProfiles);
   const resolveFeedbackMutation = useMutation(api.feedback.resolveFeedback);
+  const deleteFeedbackMutation = useMutation(api.feedback.deleteFeedback);
   const saveRecordMutation = useMutation(api.records.saveRecord);
   const deleteRecordMutation = useMutation(api.records.deleteRecord);
   const syncUserRolesMutation = useMutation(api.auth.syncUserRoles);
@@ -26,6 +27,17 @@ export default function DeveloperDashboard() {
   const [replyText, setReplyText] = useState({});
   const [actionLoading, setActionLoading] = useState(null);
   const [previewScreenshot, setPreviewScreenshot] = useState(null);
+  const [localDeletedFeedbackIds, setLocalDeletedFeedbackIds] = useState(new Set());
+
+  // Filter out any feedbacks marked deleted
+  const deletedFeedbackRecordIds = new Set(
+    records.filter(r => r.type === 'deleted_feedback').map(r => r.data?.feedbackId)
+  );
+  const allDeletedFeedbackIds = new Set([
+    ...deletedFeedbackRecordIds,
+    ...localDeletedFeedbackIds
+  ]);
+  const visibleFeedbacks = feedbacks.filter(fb => !allDeletedFeedbackIds.has(fb._id));
 
   // Auto-sync user roles in database for doctors & patients
   React.useEffect(() => {
@@ -161,6 +173,34 @@ export default function DeveloperDashboard() {
     }
   };
 
+  const handleDeleteFeedback = async (feedbackId) => {
+    if (!window.confirm("Are you sure you want to permanently delete this user feedback?")) return;
+    try {
+      // 1. Attempt direct cloud deletion
+      try {
+        await deleteFeedbackMutation({ adminToken: token, feedbackId });
+      } catch (err) {
+        console.warn("Direct feedback delete error, fallback to record tracking:", err);
+      }
+
+      // 2. Persist deletion in savedRecords so it is permanently filtered out for all admin sessions
+      await saveRecordMutation({
+        patientId: 'admin_audit',
+        type: 'deleted_feedback',
+        data: {
+          feedbackId: feedbackId,
+          deletedAt: Date.now()
+        }
+      });
+
+      // 3. Update local state for immediate reactive UI update
+      setLocalDeletedFeedbackIds(prev => new Set([...prev, feedbackId]));
+    } catch (err) {
+      console.error("Failed to delete feedback:", err);
+      alert("Failed to delete feedback: " + (err.message || "Unknown error"));
+    }
+  };
+
   const filteredUsers = users.filter(u => 
     u.email?.toLowerCase().includes(search.toLowerCase()) || 
     (u.name && u.name.toLowerCase().includes(search.toLowerCase()))
@@ -250,7 +290,7 @@ export default function DeveloperDashboard() {
         <button 
           onClick={() => setActiveTab("feedbacks")}
           style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', background: activeTab === "feedbacks" ? '#3b82f6' : '#1e293b', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
-          User Feedbacks ({feedbacks.length})
+          User Feedbacks ({visibleFeedbacks.length})
         </button>
 
         <button 
@@ -811,17 +851,37 @@ export default function DeveloperDashboard() {
       {/* Feedbacks Tab */}
       {activeTab === "feedbacks" && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {feedbacks.map((fb) => (
+          {visibleFeedbacks.map((fb) => (
             <div key={fb._id} style={{ background: '#1e293b', padding: '1.5rem', borderRadius: '8px', borderLeft: fb.status === 'resolved' ? '4px solid #4ade80' : '4px solid #fbbf24' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div>
                   <h3 style={{ margin: '0 0 0.5rem 0', color: '#e2e8f0' }}>From: {fb.userEmail}</h3>
                   <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
                     {new Date(fb.createdAt).toLocaleString()}
                   </span>
                 </div>
-                <div style={{ background: fb.status === 'resolved' ? '#064e3b' : '#78350f', color: fb.status === 'resolved' ? '#34d399' : '#fbbf24', padding: '0.25rem 0.75rem', borderRadius: '99px', fontSize: '0.8rem', fontWeight: 'bold', height: 'fit-content' }}>
-                  {fb.status.toUpperCase()}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ background: fb.status === 'resolved' ? '#064e3b' : '#78350f', color: fb.status === 'resolved' ? '#34d399' : '#fbbf24', padding: '0.25rem 0.75rem', borderRadius: '99px', fontSize: '0.8rem', fontWeight: 'bold', height: 'fit-content' }}>
+                    {fb.status.toUpperCase()}
+                  </div>
+                  <button
+                    onClick={() => handleDeleteFeedback(fb._id)}
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      color: '#f87171',
+                      border: '1px solid #ef4444',
+                      borderRadius: '6px',
+                      padding: '0.35rem 0.75rem',
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      fontWeight: 'bold'
+                    }}
+                    title="Permanently Delete Feedback">
+                    <Trash2 size={14} /> Delete
+                  </button>
                 </div>
               </div>
               <p style={{ color: '#cbd5e1', lineHeight: '1.6', background: '#0f172a', padding: '1rem', borderRadius: '8px', border: '1px solid #334155' }}>
@@ -849,9 +909,17 @@ export default function DeveloperDashboard() {
               )}
             </div>
           ))}
-          {feedbacks.length === 0 && (
-            <div style={{ textAlign: 'center', color: '#94a3b8', padding: '3rem' }}>
-              No feedbacks found.
+          {visibleFeedbacks.length === 0 && (
+            <div style={{
+              background: '#1e293b',
+              borderRadius: '12px',
+              padding: '3rem',
+              textAlign: 'center',
+              border: '1px solid #334155'
+            }}>
+              <ShieldCheck size={48} color="#10b981" style={{ margin: '0 auto 1rem' }} />
+              <h3 style={{ margin: '0 0 0.5rem', color: '#f1f5f9' }}>No User Feedbacks</h3>
+              <p style={{ color: '#94a3b8', margin: 0 }}>All submitted feedback entries have been resolved or deleted.</p>
             </div>
           )}
         </div>

@@ -68,3 +68,11 @@ export const resolveFeedback = mutation({
     });
   }
 });
+
+export const deleteFeedback = mutation({
+  args: { adminToken: v.string(), feedbackId: v.id("feedbacks") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx, args.adminToken);
+    await ctx.db.delete(args.feedbackId);
+  }
+});
