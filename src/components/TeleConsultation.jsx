@@ -5,102 +5,15 @@ import {
   Video, VideoOff, Mic, MicOff, PhoneOff, Share2, MessageSquare, 
   Calendar, Clock, User, Stethoscope, Send, CheckCircle, Plus, 
   Search, Copy, Check, FileText, Activity, Shield, Maximize2, 
-  Minimize2, AlertCircle, Sparkles, X, ChevronRight, PhoneCall
+  Minimize2, AlertCircle, Sparkles, X, ChevronRight, PhoneCall, Trash2
 } from 'lucide-react';
 import '../styles/App.css';
 
-// Pre-seeded certified specialists for instant directory availability
-const DEFAULT_DOCTORS = [
-  {
-    id: "doc-satyam",
-    name: "Dr. Satyam Tyagi",
-    role: "doctor",
-    specialization: "Chief Medical Architect & AI Triage Specialist",
-    qualification: "MBBS, MD, AI in Clinical Medicine",
-    experience: "8+ Years",
-    hospital: "ABESIT Research Hospital / Sanjeevani Central",
-    availableHours: "Mon - Sat: 09:00 AM - 05:00 PM",
-    fee: "Free / Institutional",
-    bio: "Head of Autonomous Clinical Operations and Emergency Resuscitation Protocols.",
-    rating: "4.9 ★",
-    isOnline: true
-  },
-  {
-    id: "doc-shivam",
-    name: "Dr. Shivam Tyagi",
-    role: "doctor",
-    specialization: "Critical Care & Telemetry Systems Specialist",
-    qualification: "MBBS, FCCP (Critical Care)",
-    experience: "7+ Years",
-    hospital: "Sanjeevani ICU Command Center",
-    availableHours: "All Days: 24/7 Emergency Support",
-    fee: "Free / Institutional",
-    bio: "Specializing in hemodynamic monitoring, ventilator support and remote ICU telemetry.",
-    rating: "4.8 ★",
-    isOnline: true
-  },
-  {
-    id: "doc-ishika",
-    name: "Dr. Ishika Gupta",
-    role: "doctor",
-    specialization: "Clinical Pharmacologist & Toxicologist",
-    qualification: "Pharm.D, B.Pharma (Hons)",
-    experience: "5+ Years",
-    hospital: "Department of Clinical Pharmacology, ABESIT",
-    availableHours: "Mon - Fri: 10:00 AM - 04:00 PM",
-    fee: "Free / Institutional",
-    bio: "Expert in Cytochrome P450 contraindications, adverse drug reporting, and polypharmacy titration.",
-    rating: "4.9 ★",
-    isOnline: true
-  },
-  {
-    id: "doc-rohit",
-    name: "Dr. Rohit Kumar",
-    role: "doctor",
-    specialization: "General Physician & Preventive Medicine",
-    qualification: "MBBS, DNB (Family Medicine)",
-    experience: "6+ Years",
-    hospital: "Fortis Healthcare / Sanjeevani Tele-OPD",
-    availableHours: "Mon - Sat: 11:00 AM - 07:00 PM",
-    fee: "Free / Institutional",
-    bio: "Primary care physician managing chronic lifestyle disorders, hypertension, and remote outpatient follow-ups.",
-    rating: "4.8 ★",
-    isOnline: false
-  },
-  {
-    id: "doc-saumya",
-    name: "Dr. Saumya Solanki",
-    role: "doctor",
-    specialization: "Pharmacovigilance & Drug Safety Lead",
-    qualification: "B.Pharma, M.S. (Pharm Safety)",
-    experience: "5+ Years",
-    hospital: "PvPI Regional Monitoring Center",
-    availableHours: "Tue - Sun: 09:30 AM - 04:30 PM",
-    fee: "Free / Institutional",
-    bio: "Lead specialist for adverse reaction monitoring, drug-herb interactions, and regulatory safety filings.",
-    rating: "4.9 ★",
-    isOnline: true
-  },
-  {
-    id: "doc-tushar",
-    name: "Dr. Tushar Tripathi",
-    role: "doctor",
-    specialization: "Emergency Medicine & Disaster Triage Officer",
-    qualification: "MBBS, MEM (Emergency Medicine)",
-    experience: "6+ Years",
-    hospital: "Trauma Care Center & Rapid Response Unit",
-    availableHours: "Mon - Sat: 08:00 AM - 03:00 PM",
-    fee: "Free / Institutional",
-    bio: "Rapid triage coordinator specializing in acute shock, mass-casualty triage, and trauma resuscitation.",
-    rating: "4.9 ★",
-    isOnline: true
-  }
-];
-
 export default function TeleConsultation({ user }) {
+  const isAdmin = user?.role === 'developer';
   const isDoctor = user?.role === 'doctor';
   const userEmail = user?.email?.toLowerCase() || 'guest@sanjeevani.ai';
-  const userName = user?.name || (isDoctor ? "Dr. Consultant" : "Patient");
+  const userName = user?.name || (isAdmin ? "Admin (Satyam Tyagi)" : isDoctor ? "Dr. Consultant" : "Patient");
 
   // State management
   const [activeTab, setActiveTab] = useState('meetings'); // 'meetings', 'room', 'chat'
@@ -141,25 +54,24 @@ export default function TeleConsultation({ user }) {
   // Convex real-time synchronization
   const allRecords = useQuery(api.records.getAllRecords) || [];
   const saveRecordMutation = useMutation(api.records.saveRecord);
+  const deleteRecordMutation = useMutation(api.records.deleteRecord);
 
-  // Filter records from Convex
+  // Pure dynamic registered doctors from Convex database only - ZERO hardcoded dummy profiles
   const registeredDoctorsInDb = allRecords
-    .filter(r => r.type === 'doctor_profile')
-    .map(r => ({ ...r.data, id: r._id }));
+    .filter(r => r.type === 'doctor_profile' && r.data?.email)
+    .map(r => ({ ...r.data, id: r._id, recordId: r._id }));
 
-  // Combined doctors list (seeded + dynamically registered)
-  const allDoctors = [
-    ...registeredDoctorsInDb,
-    ...DEFAULT_DOCTORS.filter(d => !registeredDoctorsInDb.some(r => r.email === d.email))
-  ];
+  const allDoctors = registeredDoctorsInDb;
 
   // Filter appointments
   const appointments = allRecords
     .filter(r => r.type === 'tele_appointment')
     .map(r => ({ ...r.data, recordId: r._id }))
-    .filter(a => isDoctor 
-      ? (a.doctorEmail?.toLowerCase() === userEmail || a.doctorId === user?.id || user?.role === 'developer')
-      : (a.patientEmail?.toLowerCase() === userEmail || user?.role === 'developer')
+    .filter(a => isAdmin
+      ? true // Admin can monitor all hospital appointments
+      : isDoctor 
+        ? (a.doctorEmail?.toLowerCase() === userEmail || a.doctorId === user?.id)
+        : (a.patientEmail?.toLowerCase() === userEmail)
     );
 
   // Filter chat messages
@@ -409,12 +321,12 @@ export default function TeleConsultation({ user }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#f8fafc' }}>{userName}</div>
-            <div style={{ fontSize: '0.75rem', color: isDoctor ? '#4ade80' : '#38bdf8', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              ● Logged in as {isDoctor ? 'Certified Doctor' : 'Registered Patient'}
+            <div style={{ fontSize: '0.75rem', color: isAdmin ? '#fbbf24' : isDoctor ? '#4ade80' : '#38bdf8', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>
+              ● Logged in as {isAdmin ? 'Developer Admin (Full Access)' : isDoctor ? 'Certified Doctor' : 'Registered Patient'}
             </div>
           </div>
-          <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: isDoctor ? 'rgba(74, 222, 128, 0.15)' : 'rgba(56, 189, 248, 0.15)', border: `1px solid ${isDoctor ? '#4ade80' : '#38bdf8'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {isDoctor ? <Stethoscope size={22} color="#4ade80" /> : <User size={22} color="#38bdf8" />}
+          <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: isAdmin ? 'rgba(245, 158, 11, 0.15)' : isDoctor ? 'rgba(74, 222, 128, 0.15)' : 'rgba(56, 189, 248, 0.15)', border: `1px solid ${isAdmin ? '#fbbf24' : isDoctor ? '#4ade80' : '#38bdf8'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {isAdmin ? <Shield size={22} color="#fbbf24" /> : isDoctor ? <Stethoscope size={22} color="#4ade80" /> : <User size={22} color="#38bdf8" />}
           </div>
         </div>
       </div>
@@ -532,100 +444,145 @@ export default function TeleConsultation({ user }) {
 
             {/* Doctors Cards Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
-              {filteredDoctors.map((doc, idx) => (
-                <div 
-                  key={doc.id || idx}
-                  style={{
-                    background: 'rgba(15, 23, 42, 0.8)',
-                    border: '1px solid #334155',
-                    borderRadius: '12px',
-                    padding: '1.25rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
-                    transition: 'transform 0.2s, border-color 0.2s',
-                    position: 'relative'
-                  }}>
-                  
-                  {/* Status Indicator */}
-                  <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: doc.isOnline !== false ? '#4ade80' : '#94a3b8' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: doc.isOnline !== false ? '#4ade80' : '#64748b' }}></span>
-                    {doc.isOnline !== false ? 'Available Now' : 'Offline'}
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                      <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: 'linear-gradient(135deg, #0284c7, #38bdf8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2rem', color: '#fff' }}>
-                        {doc.name.replace('Dr. ', '').charAt(0)}
-                      </div>
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700', color: '#f8fafc' }}>{doc.name}</h3>
-                        <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: '600' }}>{doc.specialization}</div>
-                      </div>
-                    </div>
-
-                    <div style={{ fontSize: '0.825rem', color: '#cbd5e1', lineHeight: '1.5', marginBottom: '0.75rem' }}>
-                      <div><strong>Degree:</strong> {doc.qualification || "MBBS"}</div>
-                      <div><strong>Hospital:</strong> {doc.hospital}</div>
-                      <div><strong>Experience:</strong> {doc.experience || "5+ Years"}</div>
-                      <div><strong>Hours:</strong> {doc.availableHours || "Mon-Sat 10am-5pm"}</div>
-                    </div>
-
-                    {doc.bio && (
-                      <p style={{ fontSize: '0.78rem', color: '#94a3b8', fontStyle: 'italic', margin: '0 0 1rem 0' }}>
-                        "{doc.bio}"
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', borderTop: '1px solid #1e293b', paddingTop: '0.75rem' }}>
-                    <button
-                      onClick={() => {
-                        setSelectedDoctor(doc);
-                        setIsBookModalOpen(true);
-                      }}
-                      style={{
-                        background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '0.5rem',
-                        fontSize: '0.85rem',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.35rem'
-                      }}>
-                      <Calendar size={14} /> Book Slot
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        handleStartCall(`ROOM-${doc.id || 'DOC'}`, doc);
-                      }}
-                      style={{
-                        background: 'linear-gradient(135deg, #059669, #047857)',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '0.5rem',
-                        fontSize: '0.85rem',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.35rem'
-                      }}>
-                      <Video size={14} /> Instant Call
-                    </button>
-                  </div>
+              {filteredDoctors.length === 0 ? (
+                <div style={{
+                  gridColumn: '1 / -1',
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  border: '1px dashed #334155',
+                  borderRadius: '12px',
+                  padding: '3rem 2rem',
+                  textAlign: 'center',
+                  color: '#94a3b8'
+                }}>
+                  <Stethoscope size={48} color="#64748b" style={{ margin: '0 auto 1rem' }} />
+                  <h3 style={{ color: '#f8fafc', margin: '0 0 0.5rem', fontSize: '1.2rem' }}>No Doctors Registered Yet</h3>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: '#94a3b8', maxWidth: '440px', marginLeft: 'auto', marginRight: 'auto' }}>
+                    When verified doctors sign up on Sanjeevani AI, their dynamic profiles, qualifications, and consultation availability will appear here live.
+                  </p>
                 </div>
-              ))}
+              ) : (
+                filteredDoctors.map((doc, idx) => (
+                  <div 
+                    key={doc.id || doc.recordId || idx}
+                    style={{
+                      background: 'rgba(15, 23, 42, 0.8)',
+                      border: '1px solid #334155',
+                      borderRadius: '12px',
+                      padding: '1.25rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+                      transition: 'transform 0.2s, border-color 0.2s',
+                      position: 'relative'
+                    }}>
+                    
+                    {/* Status Indicator & Admin Removal Option */}
+                    <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: doc.isOnline !== false ? '#4ade80' : '#94a3b8' }}>
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: doc.isOnline !== false ? '#4ade80' : '#64748b' }}></span>
+                        {doc.isOnline !== false ? 'Available Now' : 'Offline'}
+                      </div>
+                      {isAdmin && doc.recordId && (
+                        <button
+                          title="Admin: Remove this doctor profile"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Admin Action: Are you sure you want to delete profile for ${doc.name}?`)) {
+                              await deleteRecordMutation({ recordId: doc.recordId });
+                            }
+                          }}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            border: '1px solid #ef4444',
+                            color: '#f87171',
+                            borderRadius: '4px',
+                            padding: '2px 6px',
+                            fontSize: '0.7rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '2px'
+                          }}>
+                          <Trash2 size={11} /> Delete
+                        </button>
+                      )}
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                        <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: 'linear-gradient(135deg, #0284c7, #38bdf8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2rem', color: '#fff' }}>
+                          {(doc.name || 'D').replace('Dr. ', '').charAt(0)}
+                        </div>
+                        <div>
+                          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700', color: '#f8fafc' }}>{doc.name}</h3>
+                          <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: '600' }}>{doc.specialization}</div>
+                        </div>
+                      </div>
+
+                      <div style={{ fontSize: '0.825rem', color: '#cbd5e1', lineHeight: '1.5', marginBottom: '0.75rem' }}>
+                        <div><strong>Degree:</strong> {doc.qualification || "MBBS, MD"}</div>
+                        <div><strong>Hospital:</strong> {doc.hospital || "Tele-Care Network"}</div>
+                        <div><strong>Experience:</strong> {doc.experience || "5+ Years"}</div>
+                        <div><strong>Hours:</strong> {doc.availableHours || "Mon-Sat 10:00 AM - 05:00 PM"}</div>
+                        {doc.fee && <div><strong>Fee:</strong> {doc.fee}</div>}
+                      </div>
+
+                      {doc.bio && (
+                        <p style={{ fontSize: '0.78rem', color: '#94a3b8', fontStyle: 'italic', margin: '0 0 1rem 0' }}>
+                          "{doc.bio}"
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', borderTop: '1px solid #1e293b', paddingTop: '0.75rem' }}>
+                      <button
+                        onClick={() => {
+                          setSelectedDoctor(doc);
+                          setIsBookModalOpen(true);
+                        }}
+                        style={{
+                          background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '0.5rem',
+                          fontSize: '0.85rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.35rem'
+                        }}>
+                        <Calendar size={14} /> Book Slot
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleStartCall(`ROOM-${doc.id || 'DOC'}`, doc);
+                        }}
+                        style={{
+                          background: 'linear-gradient(135deg, #059669, #047857)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '0.5rem',
+                          fontSize: '0.85rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.35rem'
+                        }}>
+                        <Video size={14} /> Instant Call
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -982,44 +939,58 @@ export default function TeleConsultation({ user }) {
           <div style={{ borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '1rem', borderBottom: '1px solid #1e293b' }}>
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: '#f8fafc' }}>
-                {isDoctor ? "Patient Consultations" : "Doctors & Specialists"}
+                {isAdmin ? "Hospital Network Contacts" : isDoctor ? "Patient Consultations" : "Doctors & Specialists"}
               </h3>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto' }}>
-              {(isDoctor ? appointments : allDoctors).map((peer, idx) => {
-                const peerName = isDoctor ? peer.patientName : peer.name;
-                const peerSub = isDoctor ? (peer.reason || "Patient") : peer.specialization;
-                const isSelected = activeChatPeer && (activeChatPeer.name === peerName || activeChatPeer.patientName === peerName);
+              {(() => {
+                const contacts = isAdmin
+                  ? [...allDoctors, ...appointments.map(a => ({ name: a.patientName, email: a.patientEmail, specialization: `Patient (${a.reason || 'Consultation'})` }))]
+                  : (isDoctor ? appointments : allDoctors);
 
-                return (
-                  <div
-                    key={idx}
-                    onClick={() => setActiveChatPeer(peer)}
-                    style={{
-                      padding: '0.85rem 1rem',
-                      borderBottom: '1px solid #1e293b',
-                      cursor: 'pointer',
-                      background: isSelected ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
-                      borderLeft: isSelected ? '4px solid #38bdf8' : '4px solid transparent',
-                      transition: 'background 0.2s'
-                    }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                      <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#1e293b', border: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#38bdf8' }}>
-                        {peerName ? peerName.replace('Dr. ', '').charAt(0) : 'U'}
-                      </div>
-                      <div style={{ flex: 1, overflow: 'hidden' }}>
-                        <div style={{ fontWeight: '600', fontSize: '0.9rem', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {peerName}
+                if (contacts.length === 0) {
+                  return (
+                    <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
+                      No active contacts found.
+                    </div>
+                  );
+                }
+
+                return contacts.map((peer, idx) => {
+                  const peerName = peer.patientName || peer.name;
+                  const peerSub = peer.specialization || (peer.reason ? `Patient: ${peer.reason}` : "Patient");
+                  const isSelected = activeChatPeer && (activeChatPeer.name === peerName || activeChatPeer.patientName === peerName);
+
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => setActiveChatPeer(peer)}
+                      style={{
+                        padding: '0.85rem 1rem',
+                        borderBottom: '1px solid #1e293b',
+                        cursor: 'pointer',
+                        background: isSelected ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                        borderLeft: isSelected ? '4px solid #38bdf8' : '4px solid transparent',
+                        transition: 'background 0.2s'
+                      }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                        <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#1e293b', border: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#38bdf8' }}>
+                          {peerName ? peerName.replace('Dr. ', '').charAt(0) : 'U'}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {peerSub}
+                        <div style={{ flex: 1, overflow: 'hidden' }}>
+                          <div style={{ fontWeight: '600', fontSize: '0.9rem', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {peerName}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {peerSub}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
           </div>
 

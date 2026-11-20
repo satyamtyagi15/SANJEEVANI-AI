@@ -14,6 +14,7 @@ export default function DeveloperDashboard() {
   const banMutation = useMutation(api.auth.banUser);
   const deleteMutation = useMutation(api.auth.deleteUserAccount);
   const changePassword = useMutation(api.auth.changeUserPassword);
+  const cleanupDummyProfilesMutation = useMutation(api.auth.cleanupAllDummyDoctorProfiles);
   const resolveFeedbackMutation = useMutation(api.feedback.resolveFeedback);
   const saveRecordMutation = useMutation(api.records.saveRecord);
   const deleteRecordMutation = useMutation(api.records.deleteRecord);
@@ -183,6 +184,34 @@ export default function DeveloperDashboard() {
           style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', background: activeTab === "feedbacks" ? '#3b82f6' : '#1e293b', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
           User Feedbacks ({feedbacks.length})
         </button>
+
+        <button 
+          onClick={async () => {
+            if (window.confirm("Clean all orphaned doctor profiles that do not have an active registered doctor user account?")) {
+              try {
+                const res = await cleanupDummyProfilesMutation({ adminToken: token });
+                alert(`Cleaned up ${res?.deletedCount || 0} orphaned doctor profiles.`);
+              } catch(e) {
+                alert(e.message);
+              }
+            }
+          }}
+          style={{
+            marginLeft: 'auto',
+            padding: '0.65rem 1.25rem',
+            borderRadius: '8px',
+            background: 'rgba(239, 68, 68, 0.2)',
+            border: '1px solid #ef4444',
+            color: '#fca5a5',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            fontSize: '0.85rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+          <Trash2 size={16} /> Clean Orphan Profiles
+        </button>
       </div>
 
       {/* Access Requests Tab */}
@@ -335,9 +364,21 @@ export default function DeveloperDashboard() {
                       <td style={{ padding: '1rem' }}>
                         <div style={{ fontWeight: '600', color: '#fff' }}>{u.name || 'Unnamed'}</div>
                         <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{u.email}</div>
-                        {u.role === 'developer' && (
-                          <span style={{ fontSize: '0.7rem', color: '#38bdf8', fontWeight: 'bold' }}>ADMIN (DEVELOPER)</span>
-                        )}
+                        <div style={{ marginTop: '0.35rem' }}>
+                          {u.role === 'developer' ? (
+                            <span style={{ fontSize: '0.7rem', color: '#fcd34d', fontWeight: 'bold', background: 'rgba(245, 158, 11, 0.2)', padding: '2px 8px', borderRadius: '4px', border: '1px solid #f59e0b' }}>
+                              ⚡ ADMIN (DEVELOPER)
+                            </span>
+                          ) : u.role === 'doctor' ? (
+                            <span style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 'bold', background: 'rgba(16, 185, 129, 0.2)', padding: '2px 8px', borderRadius: '4px', border: '1px solid #10b981' }}>
+                              🩺 DOCTOR {u.specialization ? `• ${u.specialization}` : ''}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '0.7rem', color: '#93c5fd', fontWeight: 'bold', background: 'rgba(59, 130, 246, 0.2)', padding: '2px 8px', borderRadius: '4px', border: '1px solid #3b82f6' }}>
+                              👤 PATIENT
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td style={{ padding: '1rem', fontFamily: 'monospace', color: '#fbbf24', fontSize: '0.9rem' }}>

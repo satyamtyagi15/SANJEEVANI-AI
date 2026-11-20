@@ -263,13 +263,47 @@ export const deleteUserAccount = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx, args.adminToken);
     const user = await ctx.db.get(args.targetUserId);
+    if (!user) return;
     if (user.role === "developer") throw new ConvexError("Cannot delete a developer");
+    
     // Delete their sessions
     const sessions = await ctx.db.query("sessions").filter(q => q.eq(q.field("userId"), args.targetUserId)).collect();
     for (const s of sessions) {
       await ctx.db.delete(s._id);
     }
+
+    // Delete associated savedRecords (Doctor Profile, Access Requests, Approvals)
+    if (user.email) {
+      const records = await ctx.db.query("savedRecords")
+        .withIndex("by_patientId", q => q.eq("patientId", user.email))
+        .collect();
+      for (const r of records) {
+        await ctx.db.delete(r._id);
+      }
+    }
+
     await ctx.db.delete(args.targetUserId);
+  }
+});
+
+export const cleanupAllDummyDoctorProfiles = mutation({
+  args: { adminToken: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx, args.adminToken);
+    const doctorProfiles = await ctx.db.query("savedRecords")
+      .filter(q => q.eq(q.field("type"), "doctor_profile"))
+      .collect();
+    
+    let deletedCount = 0;
+    for (const dp of doctorProfiles) {
+      const email = dp.data?.email || dp.patientId;
+      const user = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", email)).unique();
+      if (!user || user.role !== "doctor") {
+        await ctx.db.delete(dp._id);
+        deletedCount++;
+      }
+    }
+    return { deletedCount };
   }
 });
 
