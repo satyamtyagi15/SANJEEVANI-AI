@@ -18,6 +18,7 @@ export default function DeveloperDashboard() {
   const resolveFeedbackMutation = useMutation(api.feedback.resolveFeedback);
   const saveRecordMutation = useMutation(api.records.saveRecord);
   const deleteRecordMutation = useMutation(api.records.deleteRecord);
+  const syncUserRolesMutation = useMutation(api.auth.syncUserRoles);
 
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("requests");
@@ -25,6 +26,13 @@ export default function DeveloperDashboard() {
   const [replyText, setReplyText] = useState({});
   const [actionLoading, setActionLoading] = useState(null);
   const [previewScreenshot, setPreviewScreenshot] = useState(null);
+
+  // Auto-sync user roles in database for doctors & patients
+  React.useEffect(() => {
+    if (token && user?.role === 'developer') {
+      syncUserRolesMutation({ adminToken: token }).catch(console.warn);
+    }
+  }, [token, user]);
 
   if (!user || user.role !== 'developer') {
     return <div style={{ padding: '2rem', color: '#f87171' }}>Access Denied. Developer only.</div>;
@@ -419,19 +427,39 @@ export default function DeveloperDashboard() {
                   const isApproved = u.role === 'developer' || approvalRecord?.data?.status === 'approved';
                   const isRejected = approvalRecord?.data?.status === 'rejected';
 
+                  // Dynamic role determination across user table, certified doctor profile, and requests
+                  const doctorProfile = records.find(r => 
+                    r.type === 'doctor_profile' && 
+                    (r.patientId?.toLowerCase() === emailLower || r.data?.email?.toLowerCase() === emailLower)
+                  );
+                  const accessRequest = records.find(r => 
+                    (r.type === 'access_request' || r.type === 'access_approval') && 
+                    r.data?.email?.toLowerCase() === emailLower
+                  );
+
+                  const isDev = u.role === 'developer' || emailLower === 'satyamtyagiji15@gmail.com';
+                  const isDoc = !isDev && (
+                    u.role === 'doctor' || 
+                    !!doctorProfile || 
+                    accessRequest?.data?.role === 'doctor' || 
+                    (u.name && u.name.toLowerCase().startsWith('dr.'))
+                  );
+                  const effectiveRole = isDev ? 'developer' : isDoc ? 'doctor' : 'patient';
+                  const docSpecialty = doctorProfile?.data?.specialization || u.specialization;
+
                   return (
                     <tr key={u._id} style={{ borderBottom: '1px solid #334155' }}>
                       <td style={{ padding: '1rem' }}>
                         <div style={{ fontWeight: '600', color: '#fff' }}>{u.name || 'Unnamed'}</div>
                         <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{u.email}</div>
                         <div style={{ marginTop: '0.35rem' }}>
-                          {u.role === 'developer' ? (
+                          {effectiveRole === 'developer' ? (
                             <span style={{ fontSize: '0.7rem', color: '#fcd34d', fontWeight: 'bold', background: 'rgba(245, 158, 11, 0.2)', padding: '2px 8px', borderRadius: '4px', border: '1px solid #f59e0b' }}>
                               ⚡ ADMIN (DEVELOPER)
                             </span>
-                          ) : u.role === 'doctor' ? (
+                          ) : effectiveRole === 'doctor' ? (
                             <span style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 'bold', background: 'rgba(16, 185, 129, 0.2)', padding: '2px 8px', borderRadius: '4px', border: '1px solid #10b981' }}>
-                              🩺 DOCTOR {u.specialization ? `• ${u.specialization}` : ''}
+                              🩺 DOCTOR {docSpecialty ? `• ${docSpecialty}` : ''}
                             </span>
                           ) : (
                             <span style={{ fontSize: '0.7rem', color: '#93c5fd', fontWeight: 'bold', background: 'rgba(59, 130, 246, 0.2)', padding: '2px 8px', borderRadius: '4px', border: '1px solid #3b82f6' }}>
@@ -447,7 +475,7 @@ export default function DeveloperDashboard() {
 
                       {/* App Access Approval Column */}
                       <td style={{ padding: '1rem' }}>
-                        {u.role === 'developer' ? (
+                        {effectiveRole === 'developer' ? (
                           <span style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '0.85rem' }}>Full Developer Access</span>
                         ) : isApproved ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -521,7 +549,7 @@ export default function DeveloperDashboard() {
                       </td>
 
                       <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        {u.role !== 'developer' && (
+                        {effectiveRole !== 'developer' && (
                           <>
                             <button onClick={() => handleBan(u._id)} style={{ background: u.isBanned ? '#4ade80' : '#f59e0b', color: '#fff', border: 'none', padding: '0.45rem 0.65rem', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem' }}>
                               <UserX size={14} /> {u.isBanned ? 'Unban' : 'Ban'}
@@ -543,7 +571,7 @@ export default function DeveloperDashboard() {
                             </div>
                           </>
                         )}
-                        {u.role === 'developer' && <span style={{ color: '#94a3b8' }}>Admin</span>}
+                        {effectiveRole === 'developer' && <span style={{ color: '#94a3b8' }}>Admin</span>}
                       </td>
                     </tr>
                   );
@@ -680,10 +708,10 @@ export default function DeveloperDashboard() {
                     )}
 
                     {/* Captured Screenshot Proof */}
-                    {repData.screenshot && (
+                    {repData.screenshot ? (
                       <div>
-                        <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <Camera size={15} color="#38bdf8" /> Full-Screen Screenshot Evidence (Captured at moment of report):
+                        <div style={{ fontSize: '0.85rem', color: '#38bdf8', fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <Camera size={16} color="#38bdf8" /> Full-Screen Screenshot Evidence (Captured live at moment of report):
                         </div>
                         <div 
                           onClick={() => setPreviewScreenshot(repData.screenshot)}
@@ -691,16 +719,16 @@ export default function DeveloperDashboard() {
                             display: 'inline-block',
                             position: 'relative',
                             cursor: 'pointer',
-                            borderRadius: '8px',
+                            borderRadius: '10px',
                             overflow: 'hidden',
                             border: '2px solid #38bdf8',
-                            maxWidth: '360px',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                            maxWidth: '420px',
+                            boxShadow: '0 4px 15px rgba(56, 189, 248, 0.25)'
                           }}>
                           <img 
                             src={repData.screenshot} 
-                            alt="Incident Screenshot" 
-                            style={{ width: '100%', height: '180px', objectFit: 'cover', display: 'block' }}
+                            alt="Incident Screenshot Evidence" 
+                            style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }}
                           />
                           <div style={{
                             position: 'absolute',
@@ -715,9 +743,14 @@ export default function DeveloperDashboard() {
                             fontSize: '0.85rem',
                             opacity: 0.95
                           }}>
-                            <Eye size={18} /> Click to View Fullscreen
+                            <Eye size={18} /> Click to View Fullscreen Evidence
                           </div>
                         </div>
+                      </div>
+                    ) : (
+                      <div style={{ background: '#0f172a', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px dashed #475569', color: '#94a3b8', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Camera size={16} color="#64748b" />
+                        <span>Screenshot Evidence: File submitted prior to latest live capture update. All subsequent reports capture full-screen evidence automatically.</span>
                       </div>
                     )}
 

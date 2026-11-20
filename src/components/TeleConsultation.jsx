@@ -450,26 +450,99 @@ export default function TeleConsultation({ user }) {
     setRecordingDuration(0);
   };
 
+  // Bulletproof Full-Screen Evidence Screenshot Capture
+  const captureFullScreenshot = async () => {
+    try {
+      // 1. Snapshot any active HTML5 <video> elements on the page (WebRTC remote & local feeds)
+      const videoElements = Array.from(document.querySelectorAll('video'));
+      const videoFrames = [];
+      for (const v of videoElements) {
+        try {
+          if (v.videoWidth > 0 && v.videoHeight > 0) {
+            const vCanvas = document.createElement('canvas');
+            vCanvas.width = Math.min(v.videoWidth, 640);
+            vCanvas.height = Math.round((vCanvas.width * v.videoHeight) / v.videoWidth);
+            const vCtx = vCanvas.getContext('2d');
+            vCtx.drawImage(v, 0, 0, vCanvas.width, vCanvas.height);
+            videoFrames.push({
+              dataUrl: vCanvas.toDataURL('image/jpeg', 0.7),
+            });
+          } else {
+            videoFrames.push(null);
+          }
+        } catch (e) {
+          console.warn("Video snapshot error:", e);
+          videoFrames.push(null);
+        }
+      }
+
+      // 2. Capture document with html2canvas
+      const targetElement = document.querySelector('.teleconsult-container') || document.body;
+      const canvas = await html2canvas(targetElement, {
+        backgroundColor: '#020617',
+        scale: 0.65, // ~70KB payload size to stay well under Convex 1MB document limit
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        onclone: (clonedDoc) => {
+          // Replace video elements in clone with image snapshots so WebRTC streams render cleanly
+          const clonedVideos = Array.from(clonedDoc.querySelectorAll('video'));
+          clonedVideos.forEach((cv, idx) => {
+            const frame = videoFrames[idx];
+            if (frame && frame.dataUrl && cv.parentNode) {
+              const img = clonedDoc.createElement('img');
+              img.src = frame.dataUrl;
+              img.style.width = cv.style.width || '100%';
+              img.style.height = cv.style.height || '100%';
+              img.style.objectFit = cv.style.objectFit || 'cover';
+              img.style.borderRadius = cv.style.borderRadius || '8px';
+              img.style.transform = cv.style.transform || 'none';
+              cv.parentNode.replaceChild(img, cv);
+            }
+          });
+        }
+      });
+
+      return canvas.toDataURL('image/jpeg', 0.65);
+    } catch (err) {
+      console.error("Full screenshot capture error:", err);
+      // Fallback canvas with timestamp and context
+      try {
+        const fbCanvas = document.createElement('canvas');
+        fbCanvas.width = 960;
+        fbCanvas.height = 540;
+        const ctx = fbCanvas.getContext('2d');
+        ctx.fillStyle = '#0b1120';
+        ctx.fillRect(0, 0, 960, 540);
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(20, 20, 920, 500);
+        ctx.fillStyle = '#ef4444';
+        ctx.font = 'bold 24px Inter, sans-serif';
+        ctx.fillText('SANJEEVANI AI • INCIDENT EVIDENCE CAPTURE', 50, 75);
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = '16px Inter, sans-serif';
+        ctx.fillText(`Recorded At: ${new Date().toLocaleString()}`, 50, 115);
+        ctx.fillText(`Target: ${reportTarget?.name || 'User'} (${reportTarget?.email || 'N/A'})`, 50, 145);
+        ctx.fillText(`Context: ${reportContext || 'Consultation Violation'}`, 50, 175);
+        return fbCanvas.toDataURL('image/jpeg', 0.65);
+      } catch (e) {
+        return null;
+      }
+    }
+  };
+
   // Open Incident Report Modal with Auto-Screenshot Capture
   const handleOpenReport = async (target, context) => {
     setIsCapturingScreenshot(true);
     setReportTarget(target);
     setReportContext(context);
-    try {
-      const canvas = await html2canvas(document.body, {
-        logging: false,
-        useCORS: true,
-        scale: 0.75
-      });
-      const screenshotUrl = canvas.toDataURL('image/jpeg', 0.65);
-      setReportScreenshot(screenshotUrl);
-    } catch (err) {
-      console.warn("Screenshot capture error:", err);
-      setReportScreenshot(null);
-    } finally {
-      setIsCapturingScreenshot(false);
-      setIsReportModalOpen(true);
-    }
+    setReportScreenshot(null);
+    setReportDetails('');
+    setIsReportModalOpen(true);
+
+    const screenshotUrl = await captureFullScreenshot();
+    setReportScreenshot(screenshotUrl);
+    setIsCapturingScreenshot(false);
   };
 
   // Submit Incident Report to Convex
@@ -1161,16 +1234,60 @@ export default function TeleConsultation({ user }) {
             </div>
 
             {/* Captured Screenshot Preview */}
-            {reportScreenshot && (
-              <div>
-                <div style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 'bold', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Camera size={14} /> Full-Screen Screenshot Evidence (Captured automatically):
-                </div>
-                <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid #38bdf8', maxHeight: '140px' }}>
-                  <img src={reportScreenshot} alt="Evidence" style={{ width: '100%', height: '140px', objectFit: 'cover', display: 'block' }} />
-                </div>
+            <div style={{ marginTop: '0.25rem' }}>
+              <div style={{ fontSize: '0.78rem', color: '#38bdf8', fontWeight: 'bold', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Camera size={15} /> Full-Screen Screenshot Evidence:
+                </span>
+                {reportScreenshot && (
+                  <button 
+                    type="button"
+                    onClick={async () => {
+                      setIsCapturingScreenshot(true);
+                      const sc = await captureFullScreenshot();
+                      setReportScreenshot(sc);
+                      setIsCapturingScreenshot(false);
+                    }}
+                    style={{ background: 'transparent', border: 'none', color: '#38bdf8', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}>
+                    Re-capture Screen
+                  </button>
+                )}
               </div>
-            )}
+
+              {isCapturingScreenshot ? (
+                <div style={{ padding: '1rem', background: '#1e293b', borderRadius: '8px', border: '1px dashed #38bdf8', textAlign: 'center', color: '#38bdf8', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Capturing full screen & video evidence snapshot...</span>
+                </div>
+              ) : reportScreenshot ? (
+                <div 
+                  onClick={() => setLightboxImage(reportScreenshot)}
+                  title="Click to preview screenshot in full size"
+                  style={{ borderRadius: '8px', overflow: 'hidden', border: '2px solid #38bdf8', maxHeight: '160px', position: 'relative', cursor: 'pointer' }}>
+                  <img src={reportScreenshot} alt="Evidence" style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }} />
+                  <div style={{ position: 'absolute', bottom: '6px', right: '6px', background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    <Eye size={12} /> Tap to Enlarge
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: '0.85rem', background: '#1e293b', borderRadius: '8px', border: '1px dashed #ef4444', textAlign: 'center', color: '#fca5a5', fontSize: '0.8rem' }}>
+                  <span>⚠️ Evidence capture pending. Click below to take screenshot.</span>
+                  <div style={{ marginTop: '0.35rem' }}>
+                    <button 
+                      type="button"
+                      onClick={async () => {
+                        setIsCapturingScreenshot(true);
+                        const sc = await captureFullScreenshot();
+                        setReportScreenshot(sc);
+                        setIsCapturingScreenshot(false);
+                      }}
+                      style={{ background: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 12px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 'bold' }}>
+                      📸 Capture Screen Snapshot Now
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
               <button

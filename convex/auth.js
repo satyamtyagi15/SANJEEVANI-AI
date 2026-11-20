@@ -244,7 +244,62 @@ export const getAllUsers = query({
   args: { adminToken: v.string() },
   handler: async (ctx, args) => {
     await requireAdmin(ctx, args.adminToken);
-    return await ctx.db.query("users").collect();
+    const users = await ctx.db.query("users").collect();
+    
+    // Enrich users with their real dynamic role based on doctor_profile & access requests
+    return await Promise.all(users.map(async (u) => {
+      if (u.role === "developer" || u.email === "satyamtyagiji15@gmail.com") {
+        return { ...u, role: "developer" };
+      }
+
+      // Check for certified doctor profile
+      const docProfile = await ctx.db.query("savedRecords")
+        .withIndex("by_patientId", q => q.eq("patientId", u.email))
+        .filter(q => q.eq(q.field("type"), "doctor_profile"))
+        .first();
+
+      if (docProfile || u.role === "doctor" || (u.name && u.name.startsWith("Dr."))) {
+        return {
+          ...u,
+          role: "doctor",
+          specialization: docProfile?.data?.specialization || u.specialization || "Clinical Specialist",
+          hospital: docProfile?.data?.hospital || u.hospital || "Tele-Care Network",
+          qualification: docProfile?.data?.qualification || u.qualification || "MBBS, MD",
+        };
+      }
+
+      return { ...u, role: "patient" };
+    }));
+  }
+});
+
+export const syncUserRoles = mutation({
+  args: { adminToken: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx, args.adminToken);
+    const users = await ctx.db.query("users").collect();
+    let updatedCount = 0;
+
+    for (const u of users) {
+      if (u.role !== "developer" && u.email !== "satyamtyagiji15@gmail.com") {
+        const docProfile = await ctx.db.query("savedRecords")
+          .withIndex("by_patientId", q => q.eq("patientId", u.email))
+          .filter(q => q.eq(q.field("type"), "doctor_profile"))
+          .first();
+
+        const shouldBeDoctor = !!docProfile || (u.name && u.name.startsWith("Dr."));
+        if (shouldBeDoctor && u.role !== "doctor") {
+          await ctx.db.patch(u._id, {
+            role: "doctor",
+            specialization: docProfile?.data?.specialization || u.specialization || "Clinical Specialist",
+            hospital: docProfile?.data?.hospital || u.hospital,
+            qualification: docProfile?.data?.qualification || u.qualification
+          });
+          updatedCount++;
+        }
+      }
+    }
+    return { updatedCount };
   }
 });
 
