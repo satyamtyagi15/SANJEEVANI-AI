@@ -24,33 +24,84 @@ export const getAuthUser = async (ctx, token) => {
 
 // Signup
 export const signUp = mutation({
-  args: { email: v.string(), password: v.string(), name: v.optional(v.string()) },
+  args: { 
+    email: v.string(), 
+    password: v.string(), 
+    name: v.optional(v.string()),
+    role: v.optional(v.string()), // "patient" or "doctor"
+    specialization: v.optional(v.string()),
+    qualification: v.optional(v.string()),
+    experience: v.optional(v.string()),
+    hospital: v.optional(v.string()),
+    availableHours: v.optional(v.string()),
+    consultationFee: v.optional(v.string()),
+    bio: v.optional(v.string()),
+    phone: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const existing = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", args.email)).unique();
     if (existing) throw new ConvexError("Email is already registered. Please sign in instead.");
     
     // Developer account check
-    const role = args.email === "satyamtyagiji15@gmail.com" ? "developer" : "user";
+    let userRole = args.email === "satyamtyagiji15@gmail.com" ? "developer" : (args.role || "patient");
     
     const userId = await ctx.db.insert("users", {
       email: args.email,
       password: args.password,
       name: args.name,
-      role,
+      role: userRole,
       isBanned: false,
       createdAt: Date.now(),
+      specialization: args.specialization,
+      qualification: args.qualification,
+      experience: args.experience,
+      hospital: args.hospital,
+      availableHours: args.availableHours,
+      consultationFee: args.consultationFee,
+      bio: args.bio,
+      phone: args.phone,
     });
+
+    // If registered as doctor, save doctor_profile into savedRecords for live directory sync
+    if (userRole === "doctor") {
+      const docName = args.name ? (args.name.startsWith("Dr.") ? args.name : `Dr. ${args.name}`) : `Dr. ${args.email.split("@")[0]}`;
+      await ctx.db.insert("savedRecords", {
+        patientId: args.email,
+        type: "doctor_profile",
+        data: {
+          id: userId,
+          name: docName,
+          email: args.email,
+          role: "doctor",
+          specialization: args.specialization || "General Medicine & Tele-Consultant",
+          qualification: args.qualification || "MBBS, MD",
+          experience: args.experience || "5+ Years",
+          hospital: args.hospital || "Sanjeevani AI Hospital & Tele-Care",
+          availableHours: args.availableHours || "Mon - Sat: 10:00 AM - 06:00 PM",
+          fee: args.consultationFee || "₹500 / session",
+          phone: args.phone || "",
+          bio: args.bio || "Certified medical practitioner on Sanjeevani AI Clinical Network.",
+          rating: "5.0 ★",
+          isOnline: true,
+        },
+        savedAt: Date.now(),
+      });
+    }
     
     const token = crypto.randomUUID();
     await ctx.db.insert("sessions", { userId, token, createdAt: Date.now() });
     
-    // Schedule welcome email via Brevo
-    await ctx.scheduler.runAfter(0, api.email.sendWelcomeEmail, { 
-      email: args.email, 
-      name: args.name 
-    });
+    // Schedule welcome email via Brevo safely
+    try {
+      await ctx.scheduler.runAfter(0, api.email.sendWelcomeEmail, { 
+        email: args.email, 
+        name: args.name 
+      });
+    } catch (e) {
+      console.warn("Welcome email trigger warning:", e);
+    }
     
-    return { token, role };
+    return { token, role: userRole };
   }
 });
 
@@ -92,7 +143,87 @@ export const validateSession = query({
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx, args.token);
     if (!user) return null;
-    return { email: user.email, name: user.name, role: user.role };
+    return { 
+      email: user.email, 
+      name: user.name, 
+      role: user.role,
+      specialization: user.specialization,
+      qualification: user.qualification,
+      experience: user.experience,
+      hospital: user.hospital,
+      availableHours: user.availableHours,
+      consultationFee: user.consultationFee,
+      bio: user.bio,
+      phone: user.phone,
+    };
+  }
+});
+
+// Update Doctor Profile
+export const updateDoctorProfile = mutation({
+  args: {
+    token: v.string(),
+    name: v.optional(v.string()),
+    specialization: v.optional(v.string()),
+    qualification: v.optional(v.string()),
+    experience: v.optional(v.string()),
+    hospital: v.optional(v.string()),
+    availableHours: v.optional(v.string()),
+    consultationFee: v.optional(v.string()),
+    bio: v.optional(v.string()),
+    phone: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx, args.token);
+    if (!user) throw new ConvexError("Unauthorized");
+    
+    await ctx.db.patch(user._id, {
+      ...(args.name !== undefined && { name: args.name }),
+      ...(args.specialization !== undefined && { specialization: args.specialization }),
+      ...(args.qualification !== undefined && { qualification: args.qualification }),
+      ...(args.experience !== undefined && { experience: args.experience }),
+      ...(args.hospital !== undefined && { hospital: args.hospital }),
+      ...(args.availableHours !== undefined && { availableHours: args.availableHours }),
+      ...(args.consultationFee !== undefined && { consultationFee: args.consultationFee }),
+      ...(args.bio !== undefined && { bio: args.bio }),
+      ...(args.phone !== undefined && { phone: args.phone }),
+    });
+
+    const docName = args.name || user.name || user.email;
+    const existingRec = await ctx.db.query("savedRecords")
+      .withIndex("by_patientId", q => q.eq("patientId", user.email))
+      .filter(q => q.eq(q.field("type"), "doctor_profile"))
+      .first();
+
+    const profileData = {
+      id: user._id,
+      name: docName.startsWith("Dr.") ? docName : `Dr. ${docName}`,
+      email: user.email,
+      role: "doctor",
+      specialization: args.specialization || user.specialization || "General Medicine & Tele-Consultant",
+      qualification: args.qualification || user.qualification || "MBBS, MD",
+      experience: args.experience || user.experience || "5+ Years",
+      hospital: args.hospital || user.hospital || "Sanjeevani AI Hospital & Tele-Care",
+      availableHours: args.availableHours || user.availableHours || "Mon - Sat: 10:00 AM - 06:00 PM",
+      fee: args.consultationFee || user.consultationFee || "₹500 / session",
+      phone: args.phone || user.phone || "",
+      bio: args.bio || user.bio || "",
+      rating: "5.0 ★",
+      isOnline: true,
+    };
+
+    if (existingRec) {
+      await ctx.db.patch(existingRec._id, { data: profileData, savedAt: Date.now() });
+    } else {
+      await ctx.db.insert("savedRecords", {
+        patientId: user.email,
+        type: "doctor_profile",
+        data: profileData,
+        savedAt: Date.now(),
+      });
+    }
+
+    return { success: true };
   }
 });
 

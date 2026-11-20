@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
-import { Stethoscope, Mic, Pill, ScanEye, Users, Activity, Dna, Palette, Camera, ShieldCheck, Database, Menu, X, LogOut, Code, MessageSquare, Send, ShieldAlert } from 'lucide-react';
+import { Stethoscope, Mic, Pill, ScanEye, Users, Activity, Dna, Palette, Camera, ShieldCheck, Database, Menu, X, LogOut, Code, MessageSquare, Send, ShieldAlert, Video } from 'lucide-react';
 import { useCustomAuth } from './context/AuthContext';
 import CustomAuth from './components/Auth/CustomAuth';
 import WaitingApproval from './components/Auth/WaitingApproval';
@@ -23,6 +23,7 @@ import CustomAlert from './components/CustomAlert';
 import PatientFollowUp from './components/PatientFollowUp';
 import GuardianDashboard from './components/GuardianDashboard';
 import PatientRecords from './components/PatientRecords';
+import TeleConsultation from './components/TeleConsultation';
 import { epidemicService } from './services/EpidemicService';
 import './styles/App.css';
 
@@ -71,7 +72,7 @@ function App() {
     r => r.type === 'access_approval' && r.data?.email?.toLowerCase() === user?.email?.toLowerCase()
   );
 
-  const isApproved = user?.role === 'developer' || userApprovalRecord?.data?.status === 'approved';
+  const isApproved = user?.role === 'developer' || user?.role === 'doctor' || user?.role === 'patient' || userApprovalRecord?.data?.status === 'approved';
   const isRejected = userApprovalRecord?.data?.status === 'rejected';
 
   const handleFeedbackSubmit = async () => {
@@ -170,10 +171,32 @@ function App() {
           <h1>SANJEEVANI</h1>
           <span>AI COMMAND CENTER</span>
         </div>
+
+        {user && (
+          <div style={{
+            margin: '0.4rem 1rem 0.8rem',
+            padding: '0.5rem 0.75rem',
+            background: user.role === 'doctor' ? 'rgba(5, 150, 105, 0.2)' : 'rgba(59, 130, 246, 0.15)',
+            border: `1px solid ${user.role === 'doctor' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
+            borderRadius: '8px',
+            fontSize: '0.75rem',
+            color: user.role === 'doctor' ? '#34d399' : '#93c5fd'
+          }}>
+            <div style={{ fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              {user.role === 'doctor' ? '🩺 Verified Doctor' : user.role === 'developer' ? '⚡ Developer Admin' : '👤 Patient'}
+            </div>
+            <div style={{ color: '#cbd5e1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {user.name || user.email}
+            </div>
+          </div>
+        )}
         
         <ul className="nav-menu">
           <li className={activeModule === 'triage' ? 'active' : ''} onClick={() => { setActiveModule('triage'); setIsNavOpen(false); }}>
             <Stethoscope size={20} /> <span>AI ER Triage</span>
+          </li>
+          <li className={activeModule === 'teleconsult' ? 'active' : ''} onClick={() => { setActiveModule('teleconsult'); setIsNavOpen(false); }}>
+            <Video size={20} color="#38bdf8" /> <span style={{ color: activeModule === 'teleconsult' ? '#38bdf8' : 'inherit' }}>Live Video Consult</span>
           </li>
           <li className={activeModule === 'guardian' ? 'active' : ''} onClick={() => { setActiveModule('guardian'); setIsNavOpen(false); }}>
             <ShieldCheck size={20} /> <span>Guardian Monitor</span>
@@ -233,6 +256,8 @@ function App() {
             <EpidemicAlert outbreakData={outbreakData} onClose={() => setOutbreakData(null)} />
           </div>
         )}
+
+        {activeModule === 'teleconsult' && <TeleConsultation user={user} />}
         
         {activeModule === 'guardian' && <GuardianDashboard />}
         {activeModule === 'records' && <PatientRecords />}

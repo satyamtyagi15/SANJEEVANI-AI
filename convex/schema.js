@@ -34,9 +34,17 @@ export default defineSchema({
     email: v.string(),
     password: v.string(), // Plaintext as explicitly requested
     name: v.optional(v.string()),
-    role: v.string(), // "user" or "developer"
+    role: v.string(), // "patient", "doctor", "developer", "user"
     isBanned: v.boolean(),
     createdAt: v.number(),
+    specialization: v.optional(v.string()),
+    qualification: v.optional(v.string()),
+    experience: v.optional(v.string()),
+    hospital: v.optional(v.string()),
+    availableHours: v.optional(v.string()),
+    consultationFee: v.optional(v.string()),
+    bio: v.optional(v.string()),
+    phone: v.optional(v.string()),
   }).index("by_email", ["email"]),
 
   sessions: defineTable({
