@@ -56,12 +56,47 @@ function App() {
   // Patient: Any non-developer, non-doctor user
   const isPatient = user && !isUserDoctor && !isDeveloper;
 
+  // Doctor Feature Visibility Toggles controlled dynamically by Developer Admin
+  const featureToggleRecord = records
+    .filter(r => r.type === 'doctor_feature_toggles')
+    .sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0))[0];
+
+  const defaultDoctorToggles = {
+    triage: true,
+    teleconsult: true,
+    guardian: true,
+    records: true,
+    scribe: true,
+    pharma: true,
+    pharmacovigilance: true,
+    vision: true,
+    'multi-agent': true,
+    'digital-twin': true,
+    genomic: true,
+    'art-therapy': true,
+    'pain-tracker': true
+  };
+
+  const doctorToggles = featureToggleRecord?.data || defaultDoctorToggles;
+
   // Auto-switch patient strictly to Live Video Consult module
   useEffect(() => {
     if (isPatient && activeModule !== 'teleconsult') {
       setActiveModule('teleconsult');
     }
   }, [isPatient, activeModule]);
+
+  // Auto-redirect Doctor if current active module has been toggled OFF by Developer Admin
+  useEffect(() => {
+    if (isUserDoctor && !isDeveloper) {
+      if (doctorToggles[activeModule] === false) {
+        const enabledModule = ['teleconsult', 'triage', 'guardian', 'records'].find(m => doctorToggles[m] !== false)
+          || Object.keys(doctorToggles).find(m => doctorToggles[m] !== false)
+          || 'teleconsult';
+        setActiveModule(enabledModule);
+      }
+    }
+  }, [isUserDoctor, isDeveloper, doctorToggles, activeModule]);
 
   // Auto-register access request if a non-admin user logs in
   useEffect(() => {
@@ -235,47 +270,73 @@ function App() {
               </li>
             </>
           ) : (
-            /* DOCTOR & ADMIN VIEW: ALL FEATURES VISIBLE */
+            /* DOCTOR & ADMIN VIEW: RESPECTS ADMIN VISIBILITY TOGGLES FOR DOCTORS */
             <>
-              <li className={activeModule === 'triage' ? 'active' : ''} onClick={() => { setActiveModule('triage'); setIsNavOpen(false); }}>
-                <Stethoscope size={20} /> <span>AI ER Triage</span>
-              </li>
-              <li className={activeModule === 'teleconsult' ? 'active' : ''} onClick={() => { setActiveModule('teleconsult'); setIsNavOpen(false); }}>
-                <Video size={20} color="#38bdf8" /> <span style={{ color: activeModule === 'teleconsult' ? '#38bdf8' : 'inherit' }}>Live Video Consult</span>
-              </li>
-              <li className={activeModule === 'guardian' ? 'active' : ''} onClick={() => { setActiveModule('guardian'); setIsNavOpen(false); }}>
-                <ShieldCheck size={20} /> <span>Guardian Monitor</span>
-              </li>
-              <li className={activeModule === 'records' ? 'active' : ''} onClick={() => { setActiveModule('records'); setIsNavOpen(false); }}>
-                <Database size={20} /> <span>Patient Records</span>
-              </li>
-              <li className={activeModule === 'scribe' ? 'active' : ''} onClick={() => { setActiveModule('scribe'); setIsNavOpen(false); }}>
-                <Mic size={20} /> <span>Auto-Scribe</span>
-              </li>
-              <li className={activeModule === 'pharma' ? 'active' : ''} onClick={() => { setActiveModule('pharma'); setIsNavOpen(false); }}>
-                <Pill size={20} /> <span>Pharma AI</span>
-              </li>
-              <li className={activeModule === 'pharmacovigilance' ? 'active' : ''} onClick={() => { setActiveModule('pharmacovigilance'); setIsNavOpen(false); }}>
-                <ShieldAlert size={20} /> <span>Pharmacovigilance</span>
-              </li>
-              <li className={activeModule === 'vision' ? 'active' : ''} onClick={() => { setActiveModule('vision'); setIsNavOpen(false); }}>
-                <ScanEye size={20} /> <span>Vision AI</span>
-              </li>
-              <li className={activeModule === 'multi-agent' ? 'active' : ''} onClick={() => { setActiveModule('multi-agent'); setIsNavOpen(false); }}>
-                <Users size={20} /> <span>Multi-Agent AI</span>
-              </li>
-              <li className={activeModule === 'digital-twin' ? 'active' : ''} onClick={() => { setActiveModule('digital-twin'); setIsNavOpen(false); }}>
-                <Activity size={20} /> <span>AI Digital Twin</span>
-              </li>
-              <li className={activeModule === 'genomic' ? 'active' : ''} onClick={() => { setActiveModule('genomic'); setIsNavOpen(false); }}>
-                <Dna size={20} /> <span>Genomic AI</span>
-              </li>
-              <li className={activeModule === 'art-therapy' ? 'active' : ''} onClick={() => { setActiveModule('art-therapy'); setIsNavOpen(false); }}>
-                <Palette size={20} /> <span>Art Therapy</span>
-              </li>
-              <li className={activeModule === 'pain-tracker' ? 'active' : ''} onClick={() => { setActiveModule('pain-tracker'); setIsNavOpen(false); }}>
-                <Camera size={20} /> <span>Pain Tracker</span>
-              </li>
+              {(isDeveloper || doctorToggles.triage !== false) && (
+                <li className={activeModule === 'triage' ? 'active' : ''} onClick={() => { setActiveModule('triage'); setIsNavOpen(false); }}>
+                  <Stethoscope size={20} /> <span>AI ER Triage</span>
+                </li>
+              )}
+              {(isDeveloper || doctorToggles.teleconsult !== false) && (
+                <li className={activeModule === 'teleconsult' ? 'active' : ''} onClick={() => { setActiveModule('teleconsult'); setIsNavOpen(false); }}>
+                  <Video size={20} color="#38bdf8" /> <span style={{ color: activeModule === 'teleconsult' ? '#38bdf8' : 'inherit' }}>Live Video Consult</span>
+                </li>
+              )}
+              {(isDeveloper || doctorToggles.guardian !== false) && (
+                <li className={activeModule === 'guardian' ? 'active' : ''} onClick={() => { setActiveModule('guardian'); setIsNavOpen(false); }}>
+                  <ShieldCheck size={20} /> <span>Guardian Monitor</span>
+                </li>
+              )}
+              {(isDeveloper || doctorToggles.records !== false) && (
+                <li className={activeModule === 'records' ? 'active' : ''} onClick={() => { setActiveModule('records'); setIsNavOpen(false); }}>
+                  <Database size={20} /> <span>Patient Records</span>
+                </li>
+              )}
+              {(isDeveloper || doctorToggles.scribe !== false) && (
+                <li className={activeModule === 'scribe' ? 'active' : ''} onClick={() => { setActiveModule('scribe'); setIsNavOpen(false); }}>
+                  <Mic size={20} /> <span>Auto-Scribe</span>
+                </li>
+              )}
+              {(isDeveloper || doctorToggles.pharma !== false) && (
+                <li className={activeModule === 'pharma' ? 'active' : ''} onClick={() => { setActiveModule('pharma'); setIsNavOpen(false); }}>
+                  <Pill size={20} /> <span>Pharma AI</span>
+                </li>
+              )}
+              {(isDeveloper || doctorToggles.pharmacovigilance !== false) && (
+                <li className={activeModule === 'pharmacovigilance' ? 'active' : ''} onClick={() => { setActiveModule('pharmacovigilance'); setIsNavOpen(false); }}>
+                  <ShieldAlert size={20} /> <span>Pharmacovigilance</span>
+                </li>
+              )}
+              {(isDeveloper || doctorToggles.vision !== false) && (
+                <li className={activeModule === 'vision' ? 'active' : ''} onClick={() => { setActiveModule('vision'); setIsNavOpen(false); }}>
+                  <ScanEye size={20} /> <span>Vision AI</span>
+                </li>
+              )}
+              {(isDeveloper || doctorToggles['multi-agent'] !== false) && (
+                <li className={activeModule === 'multi-agent' ? 'active' : ''} onClick={() => { setActiveModule('multi-agent'); setIsNavOpen(false); }}>
+                  <Users size={20} /> <span>Multi-Agent AI</span>
+                </li>
+              )}
+              {(isDeveloper || doctorToggles['digital-twin'] !== false) && (
+                <li className={activeModule === 'digital-twin' ? 'active' : ''} onClick={() => { setActiveModule('digital-twin'); setIsNavOpen(false); }}>
+                  <Activity size={20} /> <span>AI Digital Twin</span>
+                </li>
+              )}
+              {(isDeveloper || doctorToggles.genomic !== false) && (
+                <li className={activeModule === 'genomic' ? 'active' : ''} onClick={() => { setActiveModule('genomic'); setIsNavOpen(false); }}>
+                  <Dna size={20} /> <span>Genomic AI</span>
+                </li>
+              )}
+              {(isDeveloper || doctorToggles['art-therapy'] !== false) && (
+                <li className={activeModule === 'art-therapy' ? 'active' : ''} onClick={() => { setActiveModule('art-therapy'); setIsNavOpen(false); }}>
+                  <Palette size={20} /> <span>Art Therapy</span>
+                </li>
+              )}
+              {(isDeveloper || doctorToggles['pain-tracker'] !== false) && (
+                <li className={activeModule === 'pain-tracker' ? 'active' : ''} onClick={() => { setActiveModule('pain-tracker'); setIsNavOpen(false); }}>
+                  <Camera size={20} /> <span>Pain Tracker</span>
+                </li>
+              )}
               {isDeveloper && (
                 <li className={activeModule === 'developer' ? 'active' : ''} onClick={() => { setActiveModule('developer'); setIsNavOpen(false); }}>
                   <Code size={20} color="#fcd34d" /> <span style={{ color: '#fcd34d' }}>Dev Dashboard</span>
@@ -303,9 +364,9 @@ function App() {
           /* PATIENT: ONLY LIVE VIDEO CONSULTANCY IS RENDERED */
           <TeleConsultation user={user} />
         ) : (
-          /* DOCTORS & ADMIN: FULL ACCESS TO ALL 12 MODULES */
+          /* DOCTORS & ADMIN: FULL ACCESS CONTROLLED BY ADMIN TOGGLE SWITCHES */
           <>
-            {activeModule === 'triage' && (
+            {activeModule === 'triage' && (isDeveloper || doctorToggles.triage !== false) && (
               <div className="app-container">
                 <PatientKiosk onTriageComplete={handleTriageComplete} />
                 <DoctorDashboard triageQueue={triageQueue} />
@@ -313,19 +374,19 @@ function App() {
               </div>
             )}
 
-            {activeModule === 'teleconsult' && <TeleConsultation user={user} />}
+            {activeModule === 'teleconsult' && (isDeveloper || doctorToggles.teleconsult !== false) && <TeleConsultation user={user} />}
             
-            {activeModule === 'guardian' && <GuardianDashboard />}
-            {activeModule === 'records' && <PatientRecords />}
-            {activeModule === 'scribe' && <AutoScribe />}
-            {activeModule === 'pharma' && <PharmaAI />}
-            {activeModule === 'pharmacovigilance' && <Pharmacovigilance />}
-            {activeModule === 'vision' && <VisionAI />}
-            {activeModule === 'multi-agent' && <MultiAgent />}
-            {activeModule === 'digital-twin' && <DigitalTwin />}
-            {activeModule === 'genomic' && <GenomicScanner />}
-            {activeModule === 'art-therapy' && <ArtTherapy />}
-            {activeModule === 'pain-tracker' && <PainTracker />}
+            {activeModule === 'guardian' && (isDeveloper || doctorToggles.guardian !== false) && <GuardianDashboard />}
+            {activeModule === 'records' && (isDeveloper || doctorToggles.records !== false) && <PatientRecords />}
+            {activeModule === 'scribe' && (isDeveloper || doctorToggles.scribe !== false) && <AutoScribe />}
+            {activeModule === 'pharma' && (isDeveloper || doctorToggles.pharma !== false) && <PharmaAI />}
+            {activeModule === 'pharmacovigilance' && (isDeveloper || doctorToggles.pharmacovigilance !== false) && <Pharmacovigilance />}
+            {activeModule === 'vision' && (isDeveloper || doctorToggles.vision !== false) && <VisionAI />}
+            {activeModule === 'multi-agent' && (isDeveloper || doctorToggles['multi-agent'] !== false) && <MultiAgent />}
+            {activeModule === 'digital-twin' && (isDeveloper || doctorToggles['digital-twin'] !== false) && <DigitalTwin />}
+            {activeModule === 'genomic' && (isDeveloper || doctorToggles.genomic !== false) && <GenomicScanner />}
+            {activeModule === 'art-therapy' && (isDeveloper || doctorToggles['art-therapy'] !== false) && <ArtTherapy />}
+            {activeModule === 'pain-tracker' && (isDeveloper || doctorToggles['pain-tracker'] !== false) && <PainTracker />}
             
             {followUpPatientId && (
               <PatientFollowUp patientId={followUpPatientId} onClose={() => setFollowUpPatientId(null)} />

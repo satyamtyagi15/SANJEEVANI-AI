@@ -2,7 +2,43 @@ import React, { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { useCustomAuth } from '../../context/AuthContext';
-import { ShieldCheck, UserX, Key, Trash2, Search, LogOut, Check, X, Bell, ShieldAlert, Camera, AlertTriangle, Eye } from 'lucide-react';
+import { 
+  ShieldCheck, UserX, Key, Trash2, Search, LogOut, Check, X, Bell, ShieldAlert, 
+  Camera, AlertTriangle, Eye, Sliders, ToggleRight, ToggleLeft, Stethoscope, 
+  Video, Database, Mic, Pill, ScanEye, Users as UsersIcon, Activity, Dna, Palette 
+} from 'lucide-react';
+
+const DOCTOR_FEATURES_CATALOG = [
+  { id: 'triage', name: 'AI ER Triage', category: 'Emergency Medicine', icon: Stethoscope, color: '#38bdf8', desc: 'Autonomous emergency resuscitation, clinical triage & epidemic surveillance' },
+  { id: 'teleconsult', name: 'Live Video Consult', category: 'Tele-Health Hub', icon: Video, color: '#38bdf8', desc: 'Peer-to-peer WebRTC video consultations, meeting scheduling & live chat' },
+  { id: 'guardian', name: 'Guardian Monitor', category: 'Critical Care', icon: ShieldCheck, color: '#10b981', desc: 'Real-time telemetry, remote ICU hemodynamic monitoring & guardian alerts' },
+  { id: 'records', name: 'Patient Records Database', category: 'Health Records', icon: Database, color: '#3b82f6', desc: 'Permanent clinical records, discharge summaries & medical history database' },
+  { id: 'scribe', name: 'Auto-Scribe', category: 'Clinical Documentation', icon: Mic, color: '#a855f7', desc: 'Speech-to-text clinical transcription, voice prescription & consult summaries' },
+  { id: 'pharma', name: 'Pharma AI', category: 'Pharmacology', icon: Pill, color: '#ec4899', desc: 'Drug-drug interaction analysis, contraindication checks & dosage calculation' },
+  { id: 'pharmacovigilance', name: 'Pharmacovigilance', category: 'Safety Registry', icon: ShieldAlert, color: '#f59e0b', desc: 'Adverse drug reaction (ADR) reporting & pharmaceutical surveillance registry' },
+  { id: 'vision', name: 'Vision AI', category: 'Radiology & Imaging', icon: ScanEye, color: '#06b6d4', desc: 'Medical image analysis, radiological X-Ray/CT scanning & lesion detection' },
+  { id: 'multi-agent', name: 'Multi-Agent AI', category: 'Specialist Consensus', icon: UsersIcon, color: '#8b5cf6', desc: 'Autonomous multi-specialist clinical consensus & differential diagnosis' },
+  { id: 'digital-twin', name: 'AI Digital Twin', category: 'Physiological Simulation', icon: Activity, color: '#10b981', desc: 'Patient organ simulation, cardiovascular predictive modeling & biometrics' },
+  { id: 'genomic', name: 'Genomic AI', category: 'Genomics', icon: Dna, color: '#6366f1', desc: 'DNA variant pathogenicity scoring, genetic disease risk analysis & sequencing' },
+  { id: 'art-therapy', name: 'Art Therapy', category: 'Mental Wellness', icon: Palette, color: '#f43f5e', desc: 'Neuro-cognitive art therapy, emotional expression & psychological wellness' },
+  { id: 'pain-tracker', name: 'Pain Tracker', category: 'Pain Management', icon: Camera, color: '#eab308', desc: 'Facial pain expression recognition, visual pain indexing & analgesic titration' },
+];
+
+const DEFAULT_DOCTOR_TOGGLES = {
+  triage: true,
+  teleconsult: true,
+  guardian: true,
+  records: true,
+  scribe: true,
+  pharma: true,
+  pharmacovigilance: true,
+  vision: true,
+  'multi-agent': true,
+  'digital-twin': true,
+  genomic: true,
+  'art-therapy': true,
+  'pain-tracker': true,
+};
 
 export default function DeveloperDashboard() {
   const { token, user, logout } = useCustomAuth();
@@ -36,6 +72,53 @@ export default function DeveloperDashboard() {
     ...localDeletedFeedbackIds
   ]);
   const visibleFeedbacks = feedbacks.filter(fb => !allDeletedFeedbackIds.has(fb._id));
+
+  // Doctor Feature Visibility Toggles
+  const featureConfigRecords = records.filter(r => r.type === 'doctor_feature_toggles');
+  const latestFeatureConfigRecord = featureConfigRecords.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0))[0];
+  const doctorToggles = latestFeatureConfigRecord?.data || DEFAULT_DOCTOR_TOGGLES;
+
+  const handleToggleFeature = async (featureKey) => {
+    const currentVal = doctorToggles[featureKey] !== false;
+    const updated = {
+      ...DEFAULT_DOCTOR_TOGGLES,
+      ...doctorToggles,
+      [featureKey]: !currentVal
+    };
+    try {
+      for (const rec of featureConfigRecords) {
+        await deleteRecordMutation({ recordId: rec._id }).catch(() => {});
+      }
+      await saveRecordMutation({
+        patientId: 'system_global',
+        type: 'doctor_feature_toggles',
+        data: updated
+      });
+    } catch (err) {
+      console.error("Failed to toggle doctor feature:", err);
+      alert("Error toggling feature: " + (err.data || err.message));
+    }
+  };
+
+  const handleBulkToggleFeatures = async (enableAll = true) => {
+    const updated = {};
+    DOCTOR_FEATURES_CATALOG.forEach(f => {
+      updated[f.id] = enableAll ? true : (f.id === 'teleconsult');
+    });
+    try {
+      for (const rec of featureConfigRecords) {
+        await deleteRecordMutation({ recordId: rec._id }).catch(() => {});
+      }
+      await saveRecordMutation({
+        patientId: 'system_global',
+        type: 'doctor_feature_toggles',
+        data: updated
+      });
+    } catch (err) {
+      console.error("Failed bulk toggling features:", err);
+      alert("Error updating features: " + (err.data || err.message));
+    }
+  };
 
   if (!user || user.role !== 'developer') {
     return <div style={{ padding: '2rem', color: '#f87171' }}>Access Denied. Developer only.</div>;
@@ -278,6 +361,35 @@ export default function DeveloperDashboard() {
           onClick={() => setActiveTab("feedbacks")}
           style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', background: activeTab === "feedbacks" ? '#3b82f6' : '#1e293b', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
           User Feedbacks ({visibleFeedbacks.length})
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("doctor_features")}
+          style={{
+            padding: '0.75rem 1.5rem',
+            borderRadius: '8px',
+            background: activeTab === "doctor_features" ? 'linear-gradient(135deg, #0284c7, #2563eb)' : '#1e293b',
+            color: '#fff',
+            border: activeTab === "doctor_features" ? '1px solid #38bdf8' : '1px solid #334155',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            boxShadow: activeTab === "doctor_features" ? '0 0 15px rgba(2, 132, 199, 0.35)' : 'none'
+          }}>
+          <Sliders size={18} color="#38bdf8" />
+          <span>Doctor Feature Toggles</span>
+          <span style={{
+            background: 'rgba(56, 189, 248, 0.2)',
+            color: '#38bdf8',
+            fontSize: '0.75rem',
+            padding: '0.15rem 0.5rem',
+            borderRadius: '999px',
+            fontWeight: 'bold'
+          }}>
+            {Object.values(doctorToggles).filter(v => v !== false).length} / 13 ON
+          </span>
         </button>
 
         <button 
@@ -909,6 +1021,182 @@ export default function DeveloperDashboard() {
               <p style={{ color: '#94a3b8', margin: 0 }}>All submitted feedback entries have been resolved or deleted.</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Doctor Feature Controls Tab */}
+      {activeTab === "doctor_features" && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Top Info & Quick Actions Banner */}
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95))',
+            border: '1px solid #38bdf8',
+            borderRadius: '14px',
+            padding: '1.5rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '1rem',
+            boxShadow: '0 4px 20px rgba(56, 189, 248, 0.15)'
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <Sliders size={24} color="#38bdf8" />
+                <h2 style={{ margin: 0, color: '#f8fafc', fontSize: '1.35rem' }}>
+                  Doctor Feature Visibility & Access Toggles
+                </h2>
+              </div>
+              <p style={{ margin: '0.4rem 0 0', color: '#94a3b8', fontSize: '0.88rem' }}>
+                Toggle ON or OFF features to instantly control which AI tools and modules are visible to registered Doctors in their workspace in real-time.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => handleBulkToggleFeatures(true)}
+                style={{
+                  background: '#10b981',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '0.6rem 1.2rem',
+                  borderRadius: '8px',
+                  fontWeight: 'bold',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  boxShadow: '0 2px 10px rgba(16, 185, 129, 0.3)'
+                }}>
+                <Check size={16} /> Enable All Features
+              </button>
+
+              <button
+                onClick={() => handleBulkToggleFeatures(false)}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  color: '#f87171',
+                  border: '1px solid #ef4444',
+                  padding: '0.6rem 1.2rem',
+                  borderRadius: '8px',
+                  fontWeight: 'bold',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem'
+                }}>
+                <X size={16} /> Disable All (Teleconsult Only)
+              </button>
+            </div>
+          </div>
+
+          {/* Grid of 13 Doctor Features */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.25rem' }}>
+            {DOCTOR_FEATURES_CATALOG.map(feat => {
+              const IconComp = feat.icon;
+              const isEnabled = doctorToggles[feat.id] !== false;
+
+              return (
+                <div
+                  key={feat.id}
+                  style={{
+                    background: isEnabled ? '#1e293b' : 'rgba(15, 23, 42, 0.75)',
+                    borderRadius: '12px',
+                    padding: '1.35rem',
+                    border: isEnabled ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid #334155',
+                    boxShadow: isEnabled ? '0 4px 15px rgba(2, 132, 199, 0.12)' : 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: '1rem',
+                    transition: 'all 0.25s ease'
+                  }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{
+                          width: '42px',
+                          height: '42px',
+                          borderRadius: '10px',
+                          background: isEnabled ? 'rgba(56, 189, 248, 0.15)' : 'rgba(100, 116, 139, 0.15)',
+                          border: `1px solid ${isEnabled ? feat.color : '#475569'}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <IconComp size={22} color={isEnabled ? feat.color : '#64748b'} />
+                        </div>
+                        <div>
+                          <h3 style={{ margin: 0, fontSize: '1.05rem', color: isEnabled ? '#f8fafc' : '#94a3b8' }}>
+                            {feat.name}
+                          </h3>
+                          <div style={{ fontSize: '0.75rem', color: isEnabled ? '#38bdf8' : '#64748b', fontWeight: '500' }}>
+                            {feat.category} • Key: `{feat.id}`
+                          </div>
+                        </div>
+                      </div>
+
+                      <span style={{
+                        background: isEnabled ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.15)',
+                        color: isEnabled ? '#34d399' : '#f87171',
+                        border: `1px solid ${isEnabled ? '#10b981' : '#ef4444'}`,
+                        fontSize: '0.72rem',
+                        fontWeight: 'bold',
+                        padding: '0.2rem 0.55rem',
+                        borderRadius: '999px',
+                        letterSpacing: '0.5px'
+                      }}>
+                        {isEnabled ? '● VISIBLE' : '○ HIDDEN'}
+                      </span>
+                    </div>
+
+                    <p style={{ margin: 0, color: isEnabled ? '#cbd5e1' : '#64748b', fontSize: '0.85rem', lineHeight: '1.45' }}>
+                      {feat.desc}
+                    </p>
+                  </div>
+
+                  {/* Toggle Button Switch */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #334155', paddingTop: '0.85rem', marginTop: '0.25rem' }}>
+                    <span style={{ fontSize: '0.8rem', color: isEnabled ? '#94a3b8' : '#64748b' }}>
+                      Doctor Access: <strong style={{ color: isEnabled ? '#34d399' : '#f87171' }}>{isEnabled ? 'Enabled' : 'Disabled'}</strong>
+                    </span>
+
+                    <button
+                      onClick={() => handleToggleFeature(feat.id)}
+                      style={{
+                        background: isEnabled ? '#10b981' : '#334155',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '999px',
+                        padding: '0.4rem 1rem',
+                        fontSize: '0.82rem',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.45rem',
+                        boxShadow: isEnabled ? '0 2px 10px rgba(16, 185, 129, 0.35)' : 'none',
+                        transition: 'all 0.2s ease'
+                      }}>
+                      {isEnabled ? (
+                        <>
+                          <ToggleRight size={18} />
+                          <span>Toggle OFF</span>
+                        </>
+                      ) : (
+                        <>
+                          <ToggleLeft size={18} />
+                          <span>Toggle ON</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
