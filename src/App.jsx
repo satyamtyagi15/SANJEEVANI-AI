@@ -44,11 +44,24 @@ function App() {
   const records = useQuery(api.records.getAllRecords) || [];
   const saveRecordMutation = useMutation(api.records.saveRecord);
 
+  // Check if current user is Developer Admin
+  const isDeveloper = user?.role === 'developer' || user?.email?.toLowerCase() === 'satyamtyagiji15@gmail.com';
+
   // Check if current user is a Doctor (either in user session or by doctor_profile in records)
   const isUserDoctor = user?.role === 'doctor' || records.some(
     r => r.type === 'doctor_profile' && 
     (r.data?.email?.toLowerCase() === user?.email?.toLowerCase() || r.patientId?.toLowerCase() === user?.email?.toLowerCase())
   );
+
+  // Patient: Any non-developer, non-doctor user
+  const isPatient = user && !isUserDoctor && !isDeveloper;
+
+  // Auto-switch patient strictly to Live Video Consult module
+  useEffect(() => {
+    if (isPatient && activeModule !== 'teleconsult') {
+      setActiveModule('teleconsult');
+    }
+  }, [isPatient, activeModule]);
 
   // Auto-register access request if a non-admin user logs in
   useEffect(() => {
@@ -208,56 +221,74 @@ function App() {
         )}
         
         <ul className="nav-menu">
-          <li className={activeModule === 'triage' ? 'active' : ''} onClick={() => { setActiveModule('triage'); setIsNavOpen(false); }}>
-            <Stethoscope size={20} /> <span>AI ER Triage</span>
-          </li>
-          <li className={activeModule === 'teleconsult' ? 'active' : ''} onClick={() => { setActiveModule('teleconsult'); setIsNavOpen(false); }}>
-            <Video size={20} color="#38bdf8" /> <span style={{ color: activeModule === 'teleconsult' ? '#38bdf8' : 'inherit' }}>Live Video Consult</span>
-          </li>
-          <li className={activeModule === 'guardian' ? 'active' : ''} onClick={() => { setActiveModule('guardian'); setIsNavOpen(false); }}>
-            <ShieldCheck size={20} /> <span>Guardian Monitor</span>
-          </li>
-          <li className={activeModule === 'records' ? 'active' : ''} onClick={() => { setActiveModule('records'); setIsNavOpen(false); }}>
-            <Database size={20} /> <span>Patient Records</span>
-          </li>
-          <li className={activeModule === 'scribe' ? 'active' : ''} onClick={() => { setActiveModule('scribe'); setIsNavOpen(false); }}>
-            <Mic size={20} /> <span>Auto-Scribe</span>
-          </li>
-          <li className={activeModule === 'pharma' ? 'active' : ''} onClick={() => { setActiveModule('pharma'); setIsNavOpen(false); }}>
-            <Pill size={20} /> <span>Pharma AI</span>
-          </li>
-          <li className={activeModule === 'pharmacovigilance' ? 'active' : ''} onClick={() => { setActiveModule('pharmacovigilance'); setIsNavOpen(false); }}>
-            <ShieldAlert size={20} /> <span>Pharmacovigilance</span>
-          </li>
-          <li className={activeModule === 'vision' ? 'active' : ''} onClick={() => { setActiveModule('vision'); setIsNavOpen(false); }}>
-            <ScanEye size={20} /> <span>Vision AI</span>
-          </li>
-          <li className={activeModule === 'multi-agent' ? 'active' : ''} onClick={() => { setActiveModule('multi-agent'); setIsNavOpen(false); }}>
-            <Users size={20} /> <span>Multi-Agent AI</span>
-          </li>
-          <li className={activeModule === 'digital-twin' ? 'active' : ''} onClick={() => { setActiveModule('digital-twin'); setIsNavOpen(false); }}>
-            <Activity size={20} /> <span>AI Digital Twin</span>
-          </li>
-          <li className={activeModule === 'genomic' ? 'active' : ''} onClick={() => { setActiveModule('genomic'); setIsNavOpen(false); }}>
-            <Dna size={20} /> <span>Genomic AI</span>
-          </li>
-          <li className={activeModule === 'art-therapy' ? 'active' : ''} onClick={() => { setActiveModule('art-therapy'); setIsNavOpen(false); }}>
-            <Palette size={20} /> <span>Art Therapy</span>
-          </li>
-          <li className={activeModule === 'pain-tracker' ? 'active' : ''} onClick={() => { setActiveModule('pain-tracker'); setIsNavOpen(false); }}>
-            <Camera size={20} /> <span>Pain Tracker</span>
-          </li>
-          {user?.role === 'developer' && (
-            <li className={activeModule === 'developer' ? 'active' : ''} onClick={() => { setActiveModule('developer'); setIsNavOpen(false); }}>
-              <Code size={20} color="#fcd34d" /> <span style={{ color: '#fcd34d' }}>Dev Dashboard</span>
-            </li>
+          {isPatient ? (
+            /* PATIENT VIEW: ONLY LIVE VIDEO CONSULTATION IS VISIBLE */
+            <>
+              <li className={activeModule === 'teleconsult' ? 'active' : ''} onClick={() => { setActiveModule('teleconsult'); setIsNavOpen(false); }}>
+                <Video size={20} color="#38bdf8" /> <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>Live Video Consult</span>
+              </li>
+              <li onClick={() => { setIsFeedbackOpen(true); setIsNavOpen(false); }} style={{ cursor: 'pointer' }}>
+                <MessageSquare size={20} color="#38bdf8" /> <span style={{ color: '#38bdf8' }}>Report / Feedback</span>
+              </li>
+              <li onClick={logout}>
+                <LogOut size={20} color="#f87171" /> <span style={{ color: '#f87171' }}>Logout</span>
+              </li>
+            </>
+          ) : (
+            /* DOCTOR & ADMIN VIEW: ALL FEATURES VISIBLE */
+            <>
+              <li className={activeModule === 'triage' ? 'active' : ''} onClick={() => { setActiveModule('triage'); setIsNavOpen(false); }}>
+                <Stethoscope size={20} /> <span>AI ER Triage</span>
+              </li>
+              <li className={activeModule === 'teleconsult' ? 'active' : ''} onClick={() => { setActiveModule('teleconsult'); setIsNavOpen(false); }}>
+                <Video size={20} color="#38bdf8" /> <span style={{ color: activeModule === 'teleconsult' ? '#38bdf8' : 'inherit' }}>Live Video Consult</span>
+              </li>
+              <li className={activeModule === 'guardian' ? 'active' : ''} onClick={() => { setActiveModule('guardian'); setIsNavOpen(false); }}>
+                <ShieldCheck size={20} /> <span>Guardian Monitor</span>
+              </li>
+              <li className={activeModule === 'records' ? 'active' : ''} onClick={() => { setActiveModule('records'); setIsNavOpen(false); }}>
+                <Database size={20} /> <span>Patient Records</span>
+              </li>
+              <li className={activeModule === 'scribe' ? 'active' : ''} onClick={() => { setActiveModule('scribe'); setIsNavOpen(false); }}>
+                <Mic size={20} /> <span>Auto-Scribe</span>
+              </li>
+              <li className={activeModule === 'pharma' ? 'active' : ''} onClick={() => { setActiveModule('pharma'); setIsNavOpen(false); }}>
+                <Pill size={20} /> <span>Pharma AI</span>
+              </li>
+              <li className={activeModule === 'pharmacovigilance' ? 'active' : ''} onClick={() => { setActiveModule('pharmacovigilance'); setIsNavOpen(false); }}>
+                <ShieldAlert size={20} /> <span>Pharmacovigilance</span>
+              </li>
+              <li className={activeModule === 'vision' ? 'active' : ''} onClick={() => { setActiveModule('vision'); setIsNavOpen(false); }}>
+                <ScanEye size={20} /> <span>Vision AI</span>
+              </li>
+              <li className={activeModule === 'multi-agent' ? 'active' : ''} onClick={() => { setActiveModule('multi-agent'); setIsNavOpen(false); }}>
+                <Users size={20} /> <span>Multi-Agent AI</span>
+              </li>
+              <li className={activeModule === 'digital-twin' ? 'active' : ''} onClick={() => { setActiveModule('digital-twin'); setIsNavOpen(false); }}>
+                <Activity size={20} /> <span>AI Digital Twin</span>
+              </li>
+              <li className={activeModule === 'genomic' ? 'active' : ''} onClick={() => { setActiveModule('genomic'); setIsNavOpen(false); }}>
+                <Dna size={20} /> <span>Genomic AI</span>
+              </li>
+              <li className={activeModule === 'art-therapy' ? 'active' : ''} onClick={() => { setActiveModule('art-therapy'); setIsNavOpen(false); }}>
+                <Palette size={20} /> <span>Art Therapy</span>
+              </li>
+              <li className={activeModule === 'pain-tracker' ? 'active' : ''} onClick={() => { setActiveModule('pain-tracker'); setIsNavOpen(false); }}>
+                <Camera size={20} /> <span>Pain Tracker</span>
+              </li>
+              {isDeveloper && (
+                <li className={activeModule === 'developer' ? 'active' : ''} onClick={() => { setActiveModule('developer'); setIsNavOpen(false); }}>
+                  <Code size={20} color="#fcd34d" /> <span style={{ color: '#fcd34d' }}>Dev Dashboard</span>
+                </li>
+              )}
+              <li onClick={() => { setIsFeedbackOpen(true); setIsNavOpen(false); }} style={{ cursor: 'pointer' }}>
+                <MessageSquare size={20} color="#38bdf8" /> <span style={{ color: '#38bdf8' }}>Report / Feedback</span>
+              </li>
+              <li onClick={logout}>
+                <LogOut size={20} color="#f87171" /> <span style={{ color: '#f87171' }}>Logout</span>
+              </li>
+            </>
           )}
-          <li onClick={() => { setIsFeedbackOpen(true); setIsNavOpen(false); }} style={{ cursor: 'pointer' }}>
-            <MessageSquare size={20} color="#38bdf8" /> <span style={{ color: '#38bdf8' }}>Report / Feedback</span>
-          </li>
-          <li onClick={logout}>
-            <LogOut size={20} color="#f87171" /> <span style={{ color: '#f87171' }}>Logout</span>
-          </li>
         </ul>
         
         <div className="system-status">
@@ -268,30 +299,38 @@ function App() {
 
       {/* Main Content Area */}
       <main className="module-content">
-        {activeModule === 'triage' && (
-          <div className="app-container">
-            <PatientKiosk onTriageComplete={handleTriageComplete} />
-            <DoctorDashboard triageQueue={triageQueue} />
-            <EpidemicAlert outbreakData={outbreakData} onClose={() => setOutbreakData(null)} />
-          </div>
-        )}
+        {isPatient ? (
+          /* PATIENT: ONLY LIVE VIDEO CONSULTANCY IS RENDERED */
+          <TeleConsultation user={user} />
+        ) : (
+          /* DOCTORS & ADMIN: FULL ACCESS TO ALL 12 MODULES */
+          <>
+            {activeModule === 'triage' && (
+              <div className="app-container">
+                <PatientKiosk onTriageComplete={handleTriageComplete} />
+                <DoctorDashboard triageQueue={triageQueue} />
+                <EpidemicAlert outbreakData={outbreakData} onClose={() => setOutbreakData(null)} />
+              </div>
+            )}
 
-        {activeModule === 'teleconsult' && <TeleConsultation user={user} />}
-        
-        {activeModule === 'guardian' && <GuardianDashboard />}
-        {activeModule === 'records' && <PatientRecords />}
-        {activeModule === 'scribe' && <AutoScribe />}
-        {activeModule === 'pharma' && <PharmaAI />}
-        {activeModule === 'pharmacovigilance' && <Pharmacovigilance />}
-        {activeModule === 'vision' && <VisionAI />}
-        {activeModule === 'multi-agent' && <MultiAgent />}
-        {activeModule === 'digital-twin' && <DigitalTwin />}
-        {activeModule === 'genomic' && <GenomicScanner />}
-        {activeModule === 'art-therapy' && <ArtTherapy />}
-        {activeModule === 'pain-tracker' && <PainTracker />}
-        
-        {followUpPatientId && (
-          <PatientFollowUp patientId={followUpPatientId} onClose={() => setFollowUpPatientId(null)} />
+            {activeModule === 'teleconsult' && <TeleConsultation user={user} />}
+            
+            {activeModule === 'guardian' && <GuardianDashboard />}
+            {activeModule === 'records' && <PatientRecords />}
+            {activeModule === 'scribe' && <AutoScribe />}
+            {activeModule === 'pharma' && <PharmaAI />}
+            {activeModule === 'pharmacovigilance' && <Pharmacovigilance />}
+            {activeModule === 'vision' && <VisionAI />}
+            {activeModule === 'multi-agent' && <MultiAgent />}
+            {activeModule === 'digital-twin' && <DigitalTwin />}
+            {activeModule === 'genomic' && <GenomicScanner />}
+            {activeModule === 'art-therapy' && <ArtTherapy />}
+            {activeModule === 'pain-tracker' && <PainTracker />}
+            
+            {followUpPatientId && (
+              <PatientFollowUp patientId={followUpPatientId} onClose={() => setFollowUpPatientId(null)} />
+            )}
+          </>
         )}
 
         {isFeedbackOpen && (
